@@ -6,7 +6,7 @@
 
 clear; clc;
 
-%%% Define variables
+%%%%%%%%%% Define Variables %%%%%%%%%%
 
 % Mass and length of links
 syms a2 a3 m1 m2 m3 g real
@@ -27,4 +27,4 @@ I2 = diag([Ixx2, Iyy2, Izz2])
 I3 = diag([Ixx3, Iyy3, Izz3])
 
 
-%%% 
+%%%%%%%%%% Define Kinematics (Geometry) %%%%%%%%%%
