@@ -79,3 +79,75 @@ p_com2 = (p1 + p2) / 2;     % Link 2 CoM
 p_com3 = (p2 + p3) / 2;     % Link 3 CoM
 
 %%%%%%%%%% Calculate Jacobians %%%%%%%%%%
+
+% Linear Velocity Jacobians for CoM
+JP1 = jacobian(p_com1, q);
+JP2 = jacobian(p_com2, q);
+JP3 = jacobian(p_com3, q);
+
+% Angular Velocity Jacobians 
+z0 = [0; 0; 1];          % Base Z
+z1 = R1 * [0; 0; 1];     % Link 1 Z
+z2 = R2 * [0; 0; 1];     % Link 2 Z
+
+JO1 = [z0,       [0;0;0], [0;0;0]];
+JO2 = [z0,       z1,      [0;0;0]];
+JO3 = [z0,       z1,      z2];
+
+%%%%%%%%%% Calculate Dynamics (Equations of Motion) %%%%%%%%%%
+
+%%% Mass Matrix (B) %%%
+% B = m * J_P'*J_P  +  J_O'*R*I*R'*J_O
+
+B = (m1 * JP1.' * JP1 + JO1.' * R1 * I1 * R1.' * JO1) + (m2 * JP2.' * JP2 + JO2.' * R2 * I2 * R2.' * JO2) + (m3 * JP3.' * JP3 + JO3.' * R3 * I3 * R3.' * JO3);
+B = simplify(B);
+
+%%% Gravity Vector (g_vect) %%%
+g_vec_world = [0; 0; -g];
+
+U = - (m1 * g_vec_world.' * p_com1) - (m2 * g_vec_world.' * p_com2) - (m3 * g_vec_world.' * p_com3);
+
+% g(q) is the partial derivative of U with respect to q
+G_vect = jacobian(U, q).';
+G_vect = simplify(G_vect);
+
+%%% Coriolis (C) %%%
+n = 3;
+C_mat = sym(zeros(n,n));
+
+for k = 1:n
+    for j = 1:n
+        c_kj = 0;
+        for i = 1:n
+            % 1. Calculate the partial derivatives of B
+            % diff(function, variable)
+            db_ij_dqk = diff(B(i,j), q(k));
+            db_ik_dqj = diff(B(i,k), q(j));
+            db_jk_dqi = diff(B(j,k), q(i));
+            
+            % 2. Christoffel Formula
+            c_ijk = 0.5 * (db_ij_dqk + db_ik_dqj - db_jk_dqi);
+            
+            % 3. Sum it up multiplied by velocity
+            c_kj = c_kj + c_ijk * dq(i);
+        end
+        C_mat(k,j) = c_kj;
+    end
+end
+C_mat = simplify(C_mat);
+
+%%%%%%%%%% Export %%%%%%%%%%
+% This saves the results to .m files so you can use them in the simulation
+
+disp('Generating MATLAB function files...');
+
+matlabFunction(B, 'File', 'get_B_matrix', ...
+    'Vars', {q1, q2, q3, m1, m2, m3, a2, a3, Ixx1, Iyy1, Izz1, Ixx2, Iyy2, Izz2, Ixx3, Iyy3, Izz3});
+
+matlabFunction(C_mat, 'File', 'get_C_matrix', ...
+    'Vars', {q1, q2, q3, dq1, dq2, dq3, m1, m2, m3, a2, a3, Ixx1, Iyy1, Izz1, Ixx2, Iyy2, Izz2, Ixx3, Iyy3, Izz3});
+
+matlabFunction(G_vect, 'File', 'get_G_vector', ...
+    'Vars', {q1, q2, q3, m1, m2, m3, a2, a3, g});
+
+disp('SUCCESS! You can now use get_B, get_C, and get_G in your simulation.');
