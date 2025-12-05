@@ -51,6 +51,10 @@ function xdot = f_arm_dynamics(t, x, params)
     % WIP
     tau = [0; 0; 0]
 
+    %% Friction
+    damping_coeff = 0.5;
+    tau = tau - damping_coeff * [dq1; dq2; dq3];
+
     %% Compute Acceleration
     % Equation of Motion: B * q_dd + C * q_d + G = tau
     % Solving for q_dd:   q_dd = inv(B) * (tau - C*q_d - G)
