@@ -6,7 +6,7 @@
 
 clear; clc;
 
-%%%%%%%%%% Define Variables %%%%%%%%%%
+%% Define Variables
 
 % Mass and length of links
 syms a2 a3 m1 m2 m3 g real
@@ -27,7 +27,7 @@ I2 = diag([Ixx2, Iyy2, Izz2]);
 I3 = diag([Ixx3, Iyy3, Izz3]);
 
 
-%%%%%%%%%% Define Kinematics (Geometry) %%%%%%%%%%
+%% Define Kinematics (Geometry)
 
 % DH Matricies from Siciliano Table 2.4
 %        a    |  alpha  |  d  |  theta
@@ -78,7 +78,7 @@ p_com1 = p1;                % Link 1 CoM (Approximation)
 p_com2 = (p1 + p2) / 2;     % Link 2 CoM
 p_com3 = (p2 + p3) / 2;     % Link 3 CoM
 
-%%%%%%%%%% Calculate Jacobians %%%%%%%%%%
+%% Calculate Jacobians
 
 % Linear Velocity Jacobians for CoM
 JP1 = jacobian(p_com1, q);
@@ -94,7 +94,7 @@ JO1 = [z0,       [0;0;0], [0;0;0]];
 JO2 = [z0,       z1,      [0;0;0]];
 JO3 = [z0,       z1,      z2];
 
-%%%%%%%%%% Calculate Dynamics (Equations of Motion) %%%%%%%%%%
+%% Calculate Dynamics (Equations of Motion)
 
 %%% Mass Matrix (B) %%%
 % B = m * J_P'*J_P  +  J_O'*R*I*R'*J_O
@@ -136,7 +136,7 @@ for k = 1:n
 end
 C_mat = simplify(C_mat);
 
-%%%%%%%%%% Export %%%%%%%%%%
+%% Export
 % This saves the results to .m files so you can use them in the simulation
 
 disp('Generating MATLAB function files...');
