@@ -1,7 +1,7 @@
 % Benjamin Hsu
 % ME500 Final Project
 %
-% SCRIPT: derive_arm_equation.m
+% SCRIPT: derive_arm_equations.m
 % PURPOSE: Symobolically derive the equations of motion for a 3-DOF arm.
 
 clear; clc;
@@ -27,4 +27,4 @@ I2 = diag([Ixx2, Iyy2, Izz2])
 I3 = diag([Ixx3, Iyy3, Izz3])
 
 
-
+%%% 
