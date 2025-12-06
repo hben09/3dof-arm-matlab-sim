@@ -28,7 +28,7 @@ params.I3 = diag([0.01, I_rod3, I_rod3]);  % Forearm
 %% 2. Define Simulation Settings
 % t_end is simulation length in seconds.
 t_start = 0;
-t_end   = 2;
+t_end   = 15;
 tspan   = [t_start, t_end];
 
 % Initial Conditions
@@ -50,10 +50,10 @@ params.kd = 150;  % Damping gain
 disp('Running Simulation...');
 
 % Fix ode45 options
-options = odeset('RelTol', 1e-6, 'AbsTol', 1e-6);
+options = odeset('RelTol', 1e-3, 'AbsTol', 1e-3);
 
 % Pass 'options' as the last argument
-[t, x] = ode45(@(t,x) f_arm_dynamics(t, x, params), tspan, x0, options);
+[t, x] = ode15s(@(t,x) f_arm_dynamics(t, x, params), tspan, x0, options);
 
 disp('Simulation Complete.');
 
