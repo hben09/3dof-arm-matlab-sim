@@ -27,7 +27,7 @@ params.I3 = diag([0.01, I_rod3, I_rod3]);  % Forearm
 %% 2. Define Simulation Settings
 % t_end is simulation length in seconds.
 t_start = 0;
-t_end   = 15;
+t_end   = 10;
 tspan   = [t_start, t_end];
 
 % Initial Conditions: x = [q1; q2; q3; dq1; dq2; dq3]
