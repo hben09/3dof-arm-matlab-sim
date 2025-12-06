@@ -49,7 +49,22 @@ function xdot = f_arm_dynamics(t, x, params)
 
     %% Control
     % WIP
-    tau = [0; 0; 0]
+    % Extract Control Parameters
+    q_des = params.q_target;
+    Kp    = params.kp * eye(3); % Proportional Gain
+    Kd    = params.kd * eye(3); % Derivative Gain
+
+    % State (Current q and dq)
+    q_curr  = [q1; q2; q3];
+    dq_curr = [dq1; dq2; dq3];
+
+
+    % Error
+    e  = q_des - q_curr;
+    de = [0;0;0] - dq_curr; % Desired velocity is zero
+    
+    % Control Law: tau = Kp*e + Kd*de + g(q)
+    tau = Kp*e + Kd*de + G;
 
     %% Friction
     damping_coeff = 0.5;

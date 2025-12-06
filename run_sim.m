@@ -38,7 +38,13 @@ q1_0 = 0;          % Facing forward
 q2_0 = 0;          % Shoulder horizontal
 q3_0 = 0;          % Elbow straight
 
-x0 = [q1_0; q2_0; q3_0; 2; 0; 0]; % Zero initial velocity
+x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; % Zero initial velocity
+
+target_pos = [0.6; 0.3; 0.4];
+q_des = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), params.a2, params.a3);
+params.q_target = q_des;
+params.kp = 1500; % Stiffness gain
+params.kd = 150;  % Damping gain
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation...');
