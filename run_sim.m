@@ -16,8 +16,7 @@ params.a3 = 0.5;  % Length of Forearm (m)
 
 params.g  = 9.81; % Gravity (m/s^2)
 
-% Inertia Matrices (Simplified as diagonal for testing)
-% Modeled roughly as slender rods: I = 1/12 * m * L^2
+% Inertia Matrices (Modeled roughly as slender rods)
 I_rod2 = (1/12) * params.m2 * params.a2^2;
 I_rod3 = (1/12) * params.m3 * params.a3^2;
 
@@ -31,187 +30,174 @@ t_start = 0;
 t_end   = 15;
 tspan   = [t_start, t_end];
 
-% Initial Conditions
-% State Vector x = [q1; q2; q3; dq1; dq2; dq3]
-% Arm straight out horizontally
+% Initial Conditions: x = [q1; q2; q3; dq1; dq2; dq3]
 q1_0 = 0;          % Facing forward
 q2_0 = 0;          % Shoulder horizontal
 q3_0 = 0;          % Elbow straight
+x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; 
 
-x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; % Zero initial velocity
-
+% Control Targets
 target_pos = [0.5; 0.5; 0.5];
 q_des = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), params.a2, params.a3);
 params.q_target = q_des;
-params.kp = 1500; % Stiffness gain
-params.kd = 150;  % Damping gain
+params.kp = 20; % Stiffness gain
+params.kd = 10;  % Damping gain
 
 %% 3. Run Simulation (ODE Solver)
-disp('Running Simulation...');
+disp('Running Simulation with ode15s...');
 
-% Fix ode45 options
 options = odeset('RelTol', 1e-3, 'AbsTol', 1e-3);
-
-% Pass 'options' as the last argument
+% Using ode15s because high gains make the system 'stiff'
 [t, x] = ode15s(@(t,x) f_arm_dynamics(t, x, params), tspan, x0, options);
 
-disp('Simulation Complete.');
+disp('Simulation Complete. Preparing Animation...');
 
-%% 4. Plot Results
+%% 4. Data Interpolation (SMOOTHING STEP)
+% Create a fixed frame-rate time vector (e.g., 30 FPS)
+fps = 30;
+t_anim = t_start : 1/fps : t_end; 
+
+% Interpolate the raw ODE solution onto this fixed timeline
+% This prevents jitter from variable time steps
+x_anim = interp1(t, x, t_anim); 
+
+%% 5. Plot Static Results
 figure('Name', 'Joint Angles');
 plot(t, x(:, 1:3), 'LineWidth', 2);
 legend('Waist (q1)', 'Shoulder (q2)', 'Elbow (q3)');
 xlabel('Time (s)');
 ylabel('Angle (rad)');
-title('Joint Angles vs Time (Free Fall)');
+title('Joint Angles vs Time');
 grid on;
 
-%% 5. 3D Animation with Rectangles
-figure('Name', '3D Animation');
+%% 6. 3D Animation with Real-Time Sync
+h_fig = figure('Name', '3D Animation');
 axis_limit = params.a2 + params.a3 + 0.1;
 axis([-axis_limit axis_limit -axis_limit axis_limit -axis_limit axis_limit]);
 grid on; hold on;
 xlabel('X'); ylabel('Y'); zlabel('Z');
-view(135, 30); % Better camera angle
-axis equal;    % Keeps the boxes from looking squashed
+view(135, 30); 
+axis equal;    
 
 % Visual settings
-link_width = 0.05; % Thickness of the arm
-color_base = [0.2 0.2 0.2]; % Dark Grey
-color_arm2 = [0   0   1];   % Blue
-color_arm3 = [1   0   0];   % Red
+link_width = 0.05; 
+color_base = [0.2 0.2 0.2]; 
+color_arm2 = [0   0   1];   
+color_arm3 = [1   0   0];   
 
-for i = 1:5:length(t)
-    cla; % Clear the previous frame
-    
-    % Get current angles
-    q1_val = x(i,1);
-    q2_val = x(i,2);
-    q3_val = x(i,3);
-    
-    % NUMERICAL KINEMATICS
+disp('Starting Animation...');
+tic; % Start Real-World Timer
 
+while ishandle(h_fig) % Loop until figure is closed or time runs out
+    
+    % 1. Get current real-world time
+    t_current_real = toc;
+    
+    % 2. Stop if we exceed simulation duration
+    if t_current_real > t_end
+        break;
+    end
+    
+    % 3. Find the closest index in our INTERPOLATED data
+    % Formula: index = (time * fps) + 1
+    idx = round(t_current_real * fps) + 1;
+    
+    % Safety check for index bounds
+    if idx > length(t_anim)
+        idx = length(t_anim);
+    end
+    
+    % Get angles from interpolated data
+    q1_val = x_anim(idx, 1);
+    q2_val = x_anim(idx, 2);
+    q3_val = x_anim(idx, 3);
+    
+    % --- KINEMATICS ---
     % A1 (Base to Shoulder)
     A1 = [cos(q1_val) 0 sin(q1_val) 0;
           sin(q1_val) 0 -cos(q1_val) 0;
           0 1 0 0;
           0 0 0 1];
-      
     % A2 (Shoulder to Elbow)
     A2 = [cos(q2_val) -sin(q2_val) 0 params.a2*cos(q2_val);
           sin(q2_val)  cos(q2_val) 0 params.a2*sin(q2_val);
           0 0 1 0;
           0 0 0 1];
-      
     % A3 (Elbow to Wrist)
     A3 = [cos(q3_val) -sin(q3_val) 0 params.a3*cos(q3_val);
           sin(q3_val)  cos(q3_val) 0 params.a3*sin(q3_val);
           0 0 1 0;
           0 0 0 1];
           
-    % Calculate Global Transforms
-    T1 = A1;         % Shoulder Frame
-    T2 = T1 * A2;    % Elbow Frame
-    T3 = T2 * A3;    % Wrist Frame
+    % Global Transforms
+    T1 = A1;         
+    T2 = T1 * A2;    
+    T3 = T2 * A3;    
     
-    % DRAWING
+    % --- DRAWING ---
+    cla; % Clear previous frame
     
-    % Draw Base/Waist (Just a small box at T1 to show the pivot)
     draw_link_3d(T1, 0.1, link_width*1.5, color_base);
-    
-    % Draw Upper Arm (Link 2)
-    % It ends at T2 and has length params.a2
     draw_link_3d(T2, params.a2, link_width, color_arm2);
-    
-    % Draw Forearm (Link 3)
-    % It ends at T3 and has length params.a3
     draw_link_3d(T3, params.a3, link_width, color_arm3);
     
-    % Set limits and title
-    title(['Time: ' num2str(t(i), '%.2f') ' s']);
+    title(['Time: ' num2str(t_anim(idx), '%.2f') ' s / ' num2str(t_end) ' s']);
     axis([-axis_limit axis_limit -axis_limit axis_limit -axis_limit axis_limit]);
     
     drawnow;
-    
-    % Real-time pacing
-    % pause(0.05);
 
 end
 
-%% 6. Energy Check
-% Total Energy = Kinetic (T) + Potential (U)
-
+%% 7. Energy Check
+% Using RAW data (t, x) for physics accuracy
 E_total = zeros(length(t), 1);
 T_log = zeros(length(t), 1);
 U_log = zeros(length(t), 1);
 
 for i = 1:length(t)
-    % Unpack state
     q_now = x(i, 1:3)';
     dq_now = x(i, 4:6)';
-    q1_val = q_now(1);
-    q2_val = q_now(2);
-    q3_val = q_now(3);
     
-    % --- 1. Calculate Mass Matrix (B) ---
-    B = get_B_matrix(q1_val, q2_val, q3_val, ...
+    % 1. Mass Matrix (B)
+    B = get_B_matrix(q_now(1), q_now(2), q_now(3), ...
         params.m1, params.m2, params.m3, params.a2, params.a3, ...
         params.I1(1,1), params.I1(2,2), params.I1(3,3), ...
         params.I2(1,1), params.I2(2,2), params.I2(3,3), ...
         params.I3(1,1), params.I3(2,2), params.I3(3,3));
         
-    % --- 2. Calculate Kinetic Energy (T) ---
-    T = 0.5 * dq_now' * B * dq_now;
+    % 2. Kinetic Energy
+    T_val = 0.5 * dq_now' * B * dq_now;
     
-    % --- 3. Calculate Potential Energy (U) ---
-    % We need the height (Z) of the Center of Mass for each link
-    % Re-using the kinematics logic:
+    % 3. Potential Energy (Recalculating Transforms for CoM heights)
+    % A1..A3 setup copied from kinematics logic
+    c1=cos(q_now(1)); s1=sin(q_now(1));
+    c2=cos(q_now(2)); s2=sin(q_now(2));
+    c3=cos(q_now(3)); s3=sin(q_now(3));
     
-    % A1 (Base -> Shoulder)
-    A1 = [cos(q1_val) 0 sin(q1_val) 0;
-          sin(q1_val) 0 -cos(q1_val) 0;
-          0 1 0 0;
-          0 0 0 1];
-    % A2 (Shoulder -> Elbow)
-    A2 = [cos(q2_val) -sin(q2_val) 0 params.a2*cos(q2_val);
-          sin(q2_val)  cos(q2_val) 0 params.a2*sin(q2_val);
-          0 0 1 0;
-          0 0 0 1];
-    % A3 (Elbow -> Wrist)
-    A3 = [cos(q3_val) -sin(q3_val) 0 params.a3*cos(q3_val);
-          sin(q3_val)  cos(q3_val) 0 params.a3*sin(q3_val);
-          0 0 1 0;
-          0 0 0 1];
-          
-    % Transform Matrices
-    T1 = A1;
-    T2 = T1 * A2;
-    T3 = T2 * A3;
+    A1=[c1 0 s1 0; s1 0 -c1 0; 0 1 0 0; 0 0 0 1];
+    A2=[c2 -s2 0 params.a2*c2; s2 c2 0 params.a2*s2; 0 0 1 0; 0 0 0 1];
+    A3=[c3 -s3 0 params.a3*c3; s3 c3 0 params.a3*s3; 0 0 1 0; 0 0 0 1];
     
-    % Extract Positions (4th column, Z is 3rd element)
+    T1 = A1; T2 = T1*A2; T3 = T2*A3;
+    
     p1 = T1(1:3, 4);
     p2 = T2(1:3, 4);
     p3 = T3(1:3, 4);
     
-    % Centers of Mass (Midpoints)
-    p_com1 = p1;              % Link 1 (Waist) - approx
-    p_com2 = (p1 + p2) / 2;   % Link 2 (Upper Arm)
-    p_com3 = (p2 + p3) / 2;   % Link 3 (Forearm)
+    % CoM Heights
+    h1 = p1(3);             
+    h2 = (p1(3) + p2(3))/2; 
+    h3 = (p2(3) + p3(3))/2;
     
-    % U = m * g * h
-    U = params.m1 * params.g * p_com1(3) + ...
-        params.m2 * params.g * p_com2(3) + ...
-        params.m3 * params.g * p_com3(3);
+    U_val = params.m1*params.g*h1 + params.m2*params.g*h2 + params.m3*params.g*h3;
         
-    % --- 4. Store Total ---
-    E_total(i) = T + U;
-    T_log(i) = T;
-    U_log(i) = U;
+    E_total(i) = T_val + U_val;
+    T_log(i) = T_val;
+    U_log(i) = U_val;
 end
 
 figure;
-plot(t, E_total, 'LineWidth', 2);
-hold on;
+plot(t, E_total, 'k', 'LineWidth', 2); hold on;
 plot(t, T_log, '--r');
 plot(t, U_log, '--b');
 legend('Total Energy', 'Kinetic (T)', 'Potential (U)');
