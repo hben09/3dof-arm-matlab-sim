@@ -47,7 +47,7 @@ params.vel_target = [0; 0; 0]; % Target velocity is always zero.
 
 % --- Trajectory Timing ---
 params.traj_start_time = 1.0; 
-params.traj_duration = 2.0;
+params.traj_duration = 4.0;
 
 % --- Initial Trajectory Conditions ---
 % These are updated at the start of each new segment in the loop.
@@ -63,7 +63,7 @@ params.kd = 2*zeta*omega_n;
 % --- Control Mode Selection ---
 % 1 = Joint Space Control (Computed Torque Control)
 % 2 = Operational Space Control
-params.CONTROL_MODE = 1;
+params.CONTROL_MODE = 2;
 
 % For Operational Space Control, specify the formulation:
 % false = PD Control with Gravity Compensation
