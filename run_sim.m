@@ -47,8 +47,11 @@ q_final = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), pa
 params.q_target = q_final; % This is now the *End* of the trajectory
 
 % Gains
-params.kp = 100; % Increase gains slightly for tracking
-params.kd = 20;
+omega_n = 10; % Natural frequency (higher = stiffer/faster response)
+zeta    = 1;  % Damping ratio (1 = no overshoot)
+
+params.kp = omega_n^2;      % 100
+params.kd = 2*zeta*omega_n; % 20
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');

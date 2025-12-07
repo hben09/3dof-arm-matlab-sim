@@ -48,7 +48,7 @@ function xdot = f_arm_dynamics(t, x, params)
     G = get_G_vector(q1, q2, q3, m1, m2, m3, a2, a3, g);
 
     %% Control
-    % 1. Generate Trajectory Setpoints for current time 't'
+    % 1. Generate Trajectory (Position, Velocity, AND Acceleration)
     [q_des, dq_des, ddq_des] = get_cubic_traj(t, params.traj_start_time, ...
                                               params.traj_duration, ...
                                               params.q_start, ...
@@ -58,8 +58,10 @@ function xdot = f_arm_dynamics(t, x, params)
     q_curr  = [q1; q2; q3];
     dq_curr = [dq1; dq2; dq3];
 
-    % 3. Call Controller with dynamic targets
-    tau = get_control_torque(q_curr, dq_curr, q_des, dq_des, params, G);
+    % 3. Call Computed Torque Controller
+    % We pass B, C, G so the controller can "cancel" them out
+    tau = get_control_torque(q_curr, dq_curr, q_des, dq_des, ddq_des, ...
+                             B, C, G, params);
 
     %% Friction
     damping_coeff = 0.5;
