@@ -85,6 +85,34 @@ t_anim = t_start : 1/fps : t_end;
 % This prevents jitter from variable time steps
 x_anim = interp1(t, x, t_anim); 
 
+%% 5. Pre-calculate End Effector Path for Trace
+% This is done before the animation loop for efficiency.
+disp('Calculating end effector path for animation trace...');
+end_effector_path = zeros(length(t_anim), 3);
+for i = 1:length(t_anim)
+    q1_val = x_anim(i, 1);
+    q2_val = x_anim(i, 2);
+    q3_val = x_anim(i, 3);
+    
+    % --- KINEMATICS (copied from animation loop for consistency) ---
+    A1 = [cos(q1_val) 0 sin(q1_val) 0;
+          sin(q1_val) 0 -cos(q1_val) 0;
+          0 1 0 0;
+          0 0 0 1];
+    A2 = [cos(q2_val) -sin(q2_val) 0 params.a2*cos(q2_val);
+          sin(q2_val)  cos(q2_val) 0 params.a2*sin(q2_val);
+          0 0 1 0;
+          0 0 0 1];
+    A3 = [cos(q3_val) -sin(q3_val) 0 params.a3*cos(q3_val);
+          sin(q3_val)  cos(q3_val) 0 params.a3*sin(q3_val);
+          0 0 1 0;
+          0 0 0 1];
+          
+    T3 = A1 * A2 * A3;    
+    end_effector_path(i, :) = T3(1:3, 4)';
+end
+
+
 %% 5. Plot Static Results
 figure('Name', 'Joint Angles');
 plot(t, x(:, 1:3), 'LineWidth', 2);
@@ -101,7 +129,10 @@ axis([-axis_limit axis_limit -axis_limit axis_limit -axis_limit axis_limit]);
 grid on; hold on;
 xlabel('X'); ylabel('Y'); zlabel('Z');
 view(135, 30); 
-axis equal;    
+axis equal;
+
+% Plot target location as a green circle
+plot3(target_pos(1), target_pos(2), target_pos(3), 'go', 'MarkerSize', 10, 'MarkerFaceColor', '#00CC00');
 
 % Visual settings
 link_width = 0.05; 
@@ -160,6 +191,11 @@ while ishandle(h_fig) % Loop until figure is closed or time runs out
     
     % --- DRAWING ---
     cla; % Clear previous frame
+    
+    % Draw the end effector trace up to the current point
+    if idx > 1
+        plot3(end_effector_path(1:idx, 1), end_effector_path(1:idx, 2), end_effector_path(1:idx, 3), 'm-', 'LineWidth', 1.5);
+    end
     
     draw_link_3d(T1, 0.1, link_width*1.5, color_base);
     draw_link_3d(T2, params.a2, link_width, color_arm2);
