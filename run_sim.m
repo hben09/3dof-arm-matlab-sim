@@ -70,7 +70,7 @@ params.CONTROL_SPACE = 'JOINT';
 % 2. Choose Reference Type
 % true  = Follow a smooth path (Trajectory Planning)
 % false = Jump to target immediately (Step Input)
-params.USE_TRAJECTORY = true;
+params.USE_TRAJECTORY = false;
 
 % 3. Choose Dynamics Compensation
 % true  = Full Inverse Dynamics (Cancel B, C, G) -> "Computed Torque"

@@ -99,12 +99,7 @@ function xdot = f_arm_dynamics(t, x, params)
                                      B, C, G, params);
         else
             % Method: PD Control + Gravity Compensation
-            % tau = Kp*e + Kd*de + G
-            Kp = params.kp * eye(3);
-            Kd = params.kd * eye(3);
-            e  = ref_pos - q_curr;
-            de = ref_vel - dq_curr;
-            tau = Kp*e + Kd*de + G;
+            tau = get_joint_space_pd_control(q_curr, dq_curr, ref_pos, ref_vel, G, params);
         end
 
     elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
