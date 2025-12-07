@@ -7,72 +7,65 @@
 clear; clc; close all;
 
 %% 1. Define Robot Parameters
+% --- Mass ---
 params.m1 = 1.0;  % Mass of Waist (kg)
 params.m2 = 5.0;  % Mass of Upper Arm (kg)
 params.m3 = 3.0;  % Mass of Forearm (kg)
 
+% --- Geometry ---
 params.a2 = 0.5;  % Length of Upper Arm (m)
 params.a3 = 0.5;  % Length of Forearm (m)
 
+% --- Environment ---
 params.g  = 9.81; % Gravity (m/s^2)
 
-% Inertia Matrices (Modeled roughly as slender rods)
+% --- Inertia ---
+% Inertia matrices are modeled as slender rods about their CoM.
 I_rod2 = (1/12) * params.m2 * params.a2^2;
 I_rod3 = (1/12) * params.m3 * params.a3^2;
-
-params.I1 = diag([0.01, 0.01, 0.01]);      % Small inertia for waist
-params.I2 = diag([0.01, I_rod2, I_rod2]);  % Upper arm
+params.I1 = diag([0.01, 0.01, 0.01]);      % Waist
+params.I2 = diag([0.01, I_rod2, I_rod2]);  % Upper Arm
 params.I3 = diag([0.01, I_rod3, I_rod3]);  % Forearm
 
-%% 2. Define Simulation Settings
-% t_end is simulation length in seconds.
+%% 2. Define Simulation & Control Settings
+% --- Simulation Time ---
 t_start = 0;
-t_end   = 5;
+t_end   = 5; % Simulation segment length (s)
 tspan   = [t_start, t_end];
 
-% Initial Conditions: x = [q1; q2; q3; dq1; dq2; dq3]
-start_xyz = [0.2; 0.0; 0.2];
-q1_0 = -0.2;          % Facing forward
-q2_0 = 0.0;          % Shoulder horizontal
-q3_0 = -0.2;          % Elbow straight
+% --- Initial Conditions ---
+% State vector: x = [q1; q2; q3; dq1; dq2; dq3]
+q1_0 = -0.2; % Facing forward
+q2_0 = 0.0;  % Shoulder horizontal
+q3_0 = -0.2; % Elbow straight
 x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; 
 
-% --- TRAJECTORY SETTINGS ---
+% --- Target Configuration ---
+% Define a sequence of target positions for the end-effector.
+target_pos = {[0.5; 0.5; 0.5], [0.0; -0.6; 0.4], [-0.5; 0.5; 0.5]}; 
+params.vel_target = [0; 0; 0]; % Target velocity is always zero.
+
+% --- Trajectory Timing ---
 params.traj_start_time = 1.0; 
 params.traj_duration = 2.0;
 
-% 1. For Joint Space Control (Mode 1)
-% We need the starting ANGLES
-params.q_start = x0(1:3);  % <--- ADD THIS LINE
+% --- Initial Trajectory Conditions ---
+% These are updated at the start of each new segment in the loop.
+params.q_start = x0(1:3);
+params.pos_start = get_forward_kinematics(x0(1:3), params.a2, params.a3);
 
-% 2. For Operational Space Control (Mode 2)
-% We need the starting CARTESIAN POSITION
-p_start = get_forward_kinematics(x0(1:3), params.a2, params.a3);
-params.pos_start = p_start;
-
-% --- TARGET CONFIGURATION ---
-% Define where you want the hand to go (X, Y, Z meters)
-target_pos = {[0.5; 0.5; 0.5], [0.0; -0.6; 0.4], [-0.5; 0.5; 0.5]}; 
-params.pos_target = target_pos{1};
-params.vel_target = [0; 0; 0]; 
-
-% Calculate Joint target for Mode 1
-q_final = get_inverse_kinematics(target_pos{1}(1), target_pos{1}(2), target_pos{1}(3), params.a2, params.a3);
-params.q_target = q_final;
-
-% Gains
+% --- Controller Gains ---
 omega_n = 10; % Natural frequency (higher = stiffer/faster response)
-zeta    = 1;  % Damping ratio (1 = no overshoot)
+zeta    = 1;  % Damping ratio (1 = critically damped)
+params.kp = omega_n^2;
+params.kd = 2*zeta*omega_n;
 
-params.kp = omega_n^2;      % 100
-params.kd = 2*zeta*omega_n; % 20
-
-% --- CONTROL MODE ---
+% --- Control Mode Selection ---
 % 1 = Joint Space Control (Computed Torque Control)
 % 2 = Operational Space Control
 params.CONTROL_MODE = 1;
 
-% For Operational Space Control, choose the formulation:
+% For Operational Space Control, specify the formulation:
 % false = PD Control with Gravity Compensation
 % true  = Inverse Dynamics (Computed Torque in Cartesian Space)
 params.USE_OP_SPACE_INVERSE_DYNAMICS = true;
