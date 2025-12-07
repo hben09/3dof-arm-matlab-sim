@@ -48,20 +48,47 @@ function xdot = f_arm_dynamics(t, x, params)
     G = get_G_vector(q1, q2, q3, m1, m2, m3, a2, a3, g);
 
     %% Control
-    % 1. Generate Trajectory (Position, Velocity, AND Acceleration)
-    [q_des, dq_des, ddq_des] = get_cubic_traj(t, params.traj_start_time, ...
-                                              params.traj_duration, ...
-                                              params.q_start, ...
-                                              params.q_target);
 
-    % 2. Organize current state
+    % --- FIX: Define state vectors BEFORE the if/else block ---
+    % Organize current state (Available for ALL control modes)
     q_curr  = [q1; q2; q3];
     dq_curr = [dq1; dq2; dq3];
+    % ----------------------------------------------------------
 
-    % 3. Call Computed Torque Controller
-    % We pass B, C, G so the controller can "cancel" them out
-    tau = get_control_torque(q_curr, dq_curr, q_des, dq_des, ddq_des, ...
-                             B, C, G, params);
+    %% Control Strategy Selection
+    % 1 = Joint Space (Computed Torque / Trajectory)
+    % 2 = Operational Space (Jacobian Transpose / Virtual Spring)
+    CONTROL_MODE = 2; 
+    
+    if CONTROL_MODE == 1
+        % --- MODE 1: JOINT SPACE ---
+        % Uses params.q_target (Calculated via Inverse Kinematics in run_sim)
+        
+        [q_des, dq_des, ddq_des] = get_cubic_traj(t, params.traj_start_time, ...
+                                                params.traj_duration, ...
+                                                params.q_start, ...
+                                                params.q_target);
+
+        tau = get_control_torque(q_curr, dq_curr, q_des, dq_des, ddq_des, ...
+                                B, C, G, params);
+                                
+    elseif CONTROL_MODE == 2
+        % OPERATIONAL SPACE CONTROL
+        
+        % 1. Generate Cartesian Trajectory (Smooth path for X,Y,Z)
+        [p_des, v_des] = get_cartesian_traj(t, params.traj_start_time, ...
+                                            params.traj_duration, ...
+                                            params.pos_start, ...
+                                            params.pos_target);
+                                            
+        % 2. Feed the MOVING target into the controller
+        % The error (p_des - p_curr) will now be very small, creating smooth force.
+        tau = get_operational_space_control(q_curr, dq_curr, ...
+                                            p_des, ...   % Use p_des, not target_xyz
+                                            v_des, ...   % Use v_des, not zero
+                                            params, G);
+    end
+    
 
     %% Friction
     damping_coeff = 0.5;

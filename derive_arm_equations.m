@@ -150,4 +150,14 @@ matlabFunction(C_mat, 'File', 'get_C_matrix', ...
 matlabFunction(G_vect, 'File', 'get_G_vector', ...
     'Vars', {q1, q2, q3, m1, m2, m3, a2, a3, g});
 
+% The Geometric Jacobian J = [JP; JO]
+% We only need the top 3 rows (Linear Velocity) if we only control Position (X,Y,Z)
+J_linear = [JP1; JP2; JP3]; % Actually, usually we only care about the END EFFECTOR Jacobian (JP3)
+
+% Let's export the Jacobian for the End Effector (Link 3)
+J_end_effector = [JP3; JO3]; 
+
+matlabFunction(J_end_effector, 'File', 'get_Jacobian', ...
+    'Vars', {q1, q2, q3, a2, a3});
+
 disp('SUCCESS! You can now use get_B, get_C, and get_G in your simulation.');

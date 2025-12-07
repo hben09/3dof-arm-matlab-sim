@@ -27,7 +27,7 @@ params.I3 = diag([0.01, I_rod3, I_rod3]);  % Forearm
 %% 2. Define Simulation Settings
 % t_end is simulation length in seconds.
 t_start = 0;
-t_end   = 10;
+t_end   = 5;
 tspan   = [t_start, t_end];
 
 % Initial Conditions: x = [q1; q2; q3; dq1; dq2; dq3]
@@ -36,15 +36,28 @@ q2_0 = 0;          % Shoulder horizontal
 q3_0 = 0;          % Elbow straight
 x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; 
 
-% Trajectory Settings
-params.q_start = x0(1:3); % Start where the robot currently is
-params.traj_start_time = 1.0; % Start moving after 1 second
-params.traj_duration = 2.0;   % Take 2 seconds to move
+% --- TRAJECTORY SETTINGS ---
+params.traj_start_time = 1.0; 
+params.traj_duration = 2.0;
 
-% Target (End) Position
-target_pos = [0.0; 0.2; -0.3];
+% 1. For Joint Space Control (Mode 1)
+% We need the starting ANGLES
+params.q_start = x0(1:3);  % <--- ADD THIS LINE
+
+% 2. For Operational Space Control (Mode 2)
+% We need the starting CARTESIAN POSITION
+p_start = get_forward_kinematics(x0(1:3), params.a2, params.a3);
+params.pos_start = p_start;
+
+% --- TARGET CONFIGURATION ---
+% Define where you want the hand to go (X, Y, Z meters)
+target_pos = [0.3; 0.1; 0.5]; 
+params.pos_target = target_pos;
+params.vel_target = [0; 0; 0]; 
+
+% Calculate Joint target for Mode 1
 q_final = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), params.a2, params.a3);
-params.q_target = q_final; % This is now the *End* of the trajectory
+params.q_target = q_final;
 
 % Gains
 omega_n = 10; % Natural frequency (higher = stiffer/faster response)
