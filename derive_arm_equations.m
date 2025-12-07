@@ -167,4 +167,17 @@ J_end_effector = [JP3; JO3];
 matlabFunction(J_end_effector, 'File', fullfile(output_dir, 'get_Jacobian'), ...
     'Vars', {q1, q2, q3, a2, a3});
 
+    % --- ADD THIS SECTION ---
+% Calculate Time Derivative of Jacobian (dJ/dt)
+% J_dot = dJ/dq * dq
+% We only care about the Position Jacobian (top 3 rows) for this controller
+J_pos = JP3; 
+
+% Matrix derivative: sum of partials * q_dot
+J_dot = diff(J_pos, q1)*dq1 + diff(J_pos, q2)*dq2 + diff(J_pos, q3)*dq3;
+
+% Export J_dot
+matlabFunction(J_dot, 'File', fullfile(output_dir, 'get_J_dot'), ...
+    'Vars', {q1, q2, q3, dq1, dq2, dq3, a2, a3});
+% ------------------------
 disp(['SUCCESS! Files generated in "' output_dir '" folder and added to path.']);
