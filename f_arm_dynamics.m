@@ -48,12 +48,18 @@ function xdot = f_arm_dynamics(t, x, params)
     G = get_G_vector(q1, q2, q3, m1, m2, m3, a2, a3, g);
 
     %% Control
-    % Organize current state into vectors
+    % 1. Generate Trajectory Setpoints for current time 't'
+    [q_des, dq_des, ddq_des] = get_cubic_traj(t, params.traj_start_time, ...
+                                              params.traj_duration, ...
+                                              params.q_start, ...
+                                              params.q_target);
+
+    % 2. Organize current state
     q_curr  = [q1; q2; q3];
     dq_curr = [dq1; dq2; dq3];
 
-    % Pass 'G' because using Gravity Compensation
-    tau = get_control_torque(q_curr, dq_curr, params, G);
+    % 3. Call Controller with dynamic targets
+    tau = get_control_torque(q_curr, dq_curr, q_des, dq_des, params, G);
 
     %% Friction
     damping_coeff = 0.5;

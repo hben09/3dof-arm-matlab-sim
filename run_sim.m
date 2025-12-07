@@ -36,12 +36,19 @@ q2_0 = 0;          % Shoulder horizontal
 q3_0 = 0;          % Elbow straight
 x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; 
 
-% Control Targets
+% Trajectory Settings
+params.q_start = x0(1:3); % Start where the robot currently is
+params.traj_start_time = 1.0; % Start moving after 1 second
+params.traj_duration = 2.0;   % Take 2 seconds to move
+
+% Target (End) Position
 target_pos = [0.0; 0.2; -0.3];
-q_des = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), params.a2, params.a3);
-params.q_target = q_des;
-params.kp = 20; % Stiffness gain
-params.kd = 10;  % Damping gain
+q_final = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), params.a2, params.a3);
+params.q_target = q_final; % This is now the *End* of the trajectory
+
+% Gains
+params.kp = 100; % Increase gains slightly for tracking
+params.kd = 20;
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');

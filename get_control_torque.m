@@ -1,4 +1,4 @@
-function tau = get_control_torque(q_curr, dq_curr, params, G_comp)
+function tau = get_control_torque(q_curr, dq_curr, q_des, dq_des, params, G_comp)
 % GET_CONTROL_TORQUE 
 % Calculates joint torques
 %
@@ -11,20 +11,16 @@ function tau = get_control_torque(q_curr, dq_curr, params, G_comp)
 % OUTPUT:
 %   tau     : Control torque vector [3x1]
 
-    %% 1. Extract Control Parameters
-    q_des = params.q_target;
-    dq_des = [0; 0; 0]; % Target velocity (0 for static setpoint)
-    
-    % Expand scalar gains to diagonal matrices
+    % 1. Extract Gains
     Kp = params.kp * eye(3); 
     Kd = params.kd * eye(3); 
 
-    %% 2. Calculate Error
+    % 2. Calculate Error
     e  = q_des - q_curr;
-    de = dq_des - dq_curr;
+    de = dq_des - dq_curr; % Tracking error (target vel - current vel)
     
-    %% 3. Control Law
-    % Law: tau = Kp*error + Kd*error_dot + Gravity_Compensation
+    % 3. Control Law
+    % tau = Kp*e + Kd*de + Gravity
     tau = Kp*e + Kd*de + G_comp;
     
 end
