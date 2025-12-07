@@ -31,9 +31,10 @@ t_end   = 5;
 tspan   = [t_start, t_end];
 
 % Initial Conditions: x = [q1; q2; q3; dq1; dq2; dq3]
-q1_0 = 0;          % Facing forward
-q2_0 = 0;          % Shoulder horizontal
-q3_0 = 0;          % Elbow straight
+start_xyz = [0.2; 0.0; 0.2];
+q1_0 = -0.2;          % Facing forward
+q2_0 = 0.0;          % Shoulder horizontal
+q3_0 = -0.2;          % Elbow straight
 x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; 
 
 % --- TRAJECTORY SETTINGS ---
@@ -51,7 +52,7 @@ params.pos_start = p_start;
 
 % --- TARGET CONFIGURATION ---
 % Define where you want the hand to go (X, Y, Z meters)
-target_pos = [0.3; 0.1; 0.5]; 
+target_pos = [0.5; 0.5; 0.5]; 
 params.pos_target = target_pos;
 params.vel_target = [0; 0; 0]; 
 
