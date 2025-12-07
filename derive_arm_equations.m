@@ -141,13 +141,20 @@ C_mat = simplify(C_mat);
 
 disp('Generating MATLAB function files...');
 
-matlabFunction(B, 'File', 'get_B_matrix', ...
+output_dir = 'generated_functions';
+if ~exist(output_dir, 'dir')
+   mkdir(output_dir);
+end
+addpath(output_dir);
+
+
+matlabFunction(B, 'File', fullfile(output_dir, 'get_B_matrix'), ...
     'Vars', {q1, q2, q3, m1, m2, m3, a2, a3, Ixx1, Iyy1, Izz1, Ixx2, Iyy2, Izz2, Ixx3, Iyy3, Izz3});
 
-matlabFunction(C_mat, 'File', 'get_C_matrix', ...
+matlabFunction(C_mat, 'File', fullfile(output_dir, 'get_C_matrix'), ...
     'Vars', {q1, q2, q3, dq1, dq2, dq3, m1, m2, m3, a2, a3, Ixx1, Iyy1, Izz1, Ixx2, Iyy2, Izz2, Ixx3, Iyy3, Izz3});
 
-matlabFunction(G_vect, 'File', 'get_G_vector', ...
+matlabFunction(G_vect, 'File', fullfile(output_dir, 'get_G_vector'), ...
     'Vars', {q1, q2, q3, m1, m2, m3, a2, a3, g});
 
 % The Geometric Jacobian J = [JP; JO]
@@ -157,7 +164,7 @@ J_linear = [JP1; JP2; JP3]; % Actually, usually we only care about the END EFFEC
 % Let's export the Jacobian for the End Effector (Link 3)
 J_end_effector = [JP3; JO3]; 
 
-matlabFunction(J_end_effector, 'File', 'get_Jacobian', ...
+matlabFunction(J_end_effector, 'File', fullfile(output_dir, 'get_Jacobian'), ...
     'Vars', {q1, q2, q3, a2, a3});
 
-disp('SUCCESS! You can now use get_B, get_C, and get_G in your simulation.');
+disp(['SUCCESS! Files generated in "' output_dir '" folder and added to path.']);
