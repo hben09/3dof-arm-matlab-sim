@@ -55,42 +55,76 @@ function xdot = f_arm_dynamics(t, x, params)
     dq_curr = [dq1; dq2; dq3];
     % ----------------------------------------------------------
 
-    %% Control Strategy Selection
-    if params.CONTROL_MODE == 1
-        % --- MODE 1: JOINT SPACE ---
-        % Uses params.q_target (Calculated via Inverse Kinematics in run_sim)
-        
-        [q_des, dq_des, ddq_des] = get_cubic_traj(t, params.traj_start_time, ...
-                                                params.traj_duration, ...
-                                                params.q_start, ...
-                                                params.q_target);
-
-        tau = get_control_torque(q_curr, dq_curr, q_des, dq_des, ddq_des, ...
-                                B, C, G, params);
-                                
-    elseif params.CONTROL_MODE == 2
-        % --- MODE 2: OPERATIONAL SPACE ---
-        if params.USE_OP_SPACE_INVERSE_DYNAMICS
-            % --- Inverse Dynamics Formulation ---
-            % 1. Generate Cartesian Trajectory (Smooth path for X,Y,Z)
-            [p_des, v_des, a_des] = get_cartesian_traj(t, params.traj_start_time, ...
-                                                params.traj_duration, ...
-                                                params.pos_start, ...
-                                                params.pos_target);
-
-            % 2. Feed the MOVING target into the controller
-            tau = get_op_space_inverse_dynamics(q_curr, dq_curr, ...
-                                        p_des, v_des, a_des, ...
-                                        params);
+    %% Control Logic
+    
+    % --- 1. Determine Desired State (Reference) ---
+    if strcmp(params.CONTROL_SPACE, 'JOINT')
+        % Joint Space Reference
+        if params.USE_TRAJECTORY
+            [ref_pos, ref_vel, ref_acc] = get_cubic_traj(t, params.traj_start_time, ...
+                                                    params.traj_duration, ...
+                                                    params.q_start, ...
+                                                    params.q_target);
         else
-            % --- PD Control + Gravity Comp Formulation ---
+            % Step Input (Fixed Target)
+            ref_pos = params.q_target;
+            ref_vel = zeros(3,1);
+            ref_acc = zeros(3,1);
+        end
+        
+    elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
+        % Operational Space Reference
+        if params.USE_TRAJECTORY
+            [ref_pos, ref_vel, ref_acc] = get_cartesian_traj(t, params.traj_start_time, ...
+                                                    params.traj_duration, ...
+                                                    params.pos_start, ...
+                                                    params.pos_target);
+        else
+            % Step Input (Fixed Target)
+            ref_pos = params.pos_target;
+            ref_vel = zeros(3,1);
+            ref_acc = zeros(3,1);
+        end
+    end
+
+    %% --- 2. Calculate Control Torque ---
+    
+    if strcmp(params.CONTROL_SPACE, 'JOINT')
+        % --- JOINT SPACE CONTROL ---
+        
+        if params.USE_INVERSE_DYNAMICS
+            % Method: Computed Torque Control (Inverse Dynamics)
+            % tau = B(q)*y + C*dq + G
+            tau = get_control_torque(q_curr, dq_curr, ref_pos, ref_vel, ref_acc, ...
+                                     B, C, G, params);
+        else
+            % Method: PD Control + Gravity Compensation
+            % tau = Kp*e + Kd*de + G
+            Kp = params.kp * eye(3);
+            Kd = params.kd * eye(3);
+            e  = ref_pos - q_curr;
+            de = ref_vel - dq_curr;
+            tau = Kp*e + Kd*de + G;
+        end
+
+    elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
+        % --- OPERATIONAL SPACE CONTROL ---
+        
+        if params.USE_INVERSE_DYNAMICS
+            % Method: Operational Space Inverse Dynamics
+            % Decouples task space into linear double integrators
+            tau = get_op_space_inverse_dynamics(q_curr, dq_curr, ...
+                                                ref_pos, ref_vel, ref_acc, ...
+                                                params);
+        else
+            % Method: Operational Space PD + Gravity Compensation
+            % Acts like a Cartesian spring
+            % Note: This function needs to be updated to accept ref_vel if you want damping tracking
             tau = get_operational_space_control(q_curr, dq_curr, ...
-                                                params.pos_target, ...
-                                                params.vel_target, ...
+                                                ref_pos, ref_vel, ...
                                                 params, G);
         end
     end
-    
 
     %% Friction
     damping_coeff = 0.5;

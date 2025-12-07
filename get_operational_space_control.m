@@ -28,21 +28,19 @@ function tau = get_operational_space_control(q_curr, dq_curr, pos_target, vel_ta
     % v = J * dq
     v_curr = J_pos * dq_curr;
 
-    %% 4. Control Law (Virtual Spring-Damper)
-    % F_des = Kp * (Pos_Error) + Kd * (Vel_Error)
+    %% Control Law
+    % Calculate operational space velocity
+    v_curr = J_pos * dq_curr;
     
-    % Tunable Cartesian Gains (N/m and Ns/m)
     Kp_cart = diag([500, 500, 500]); 
     Kd_cart = diag([50, 50, 50]);
 
     pos_err = pos_target - p_curr;
-    vel_err = vel_target - v_curr;
+    
+    % FIX: Use the actual target velocity passed in
+    vel_err = vel_target - v_curr; 
 
-    % Cartesian Force required
     F_des = Kp_cart * pos_err + Kd_cart * vel_err;
-
-    %% 5. Map Force to Torque
-    % tau = J' * F + Gravity
     tau = J_pos' * F_des + G;
 
 end

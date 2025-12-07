@@ -60,15 +60,22 @@ zeta    = 1;  % Damping ratio (1 = critically damped)
 params.kp = omega_n^2;
 params.kd = 2*zeta*omega_n;
 
-% --- Control Mode Selection ---
-% 1 = Joint Space Control (Computed Torque Control)
-% 2 = Operational Space Control
-params.CONTROL_MODE = 2;
+% --- Control Configuration ---
 
-% For Operational Space Control, specify the formulation:
-% false = PD Control with Gravity Compensation
-% true  = Inverse Dynamics (Computed Torque in Cartesian Space)
-params.USE_OP_SPACE_INVERSE_DYNAMICS = true;
+% 1. Choose Control Space
+% 'JOINT'       = Control joint angles (q1, q2, q3)
+% 'OPERATIONAL' = Control end-effector position (x, y, z)
+params.CONTROL_SPACE = 'JOINT'; 
+
+% 2. Choose Reference Type
+% true  = Follow a smooth path (Trajectory Planning)
+% false = Jump to target immediately (Step Input)
+params.USE_TRAJECTORY = true;
+
+% 3. Choose Dynamics Compensation
+% true  = Full Inverse Dynamics (Cancel B, C, G) -> "Computed Torque"
+% false = Gravity Compensation Only (Cancel G)   -> "PD Control"
+params.USE_INVERSE_DYNAMICS = false;
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');
