@@ -52,12 +52,12 @@ params.pos_start = p_start;
 
 % --- TARGET CONFIGURATION ---
 % Define where you want the hand to go (X, Y, Z meters)
-target_pos = [0.5; 0.5; 0.5]; 
-params.pos_target = target_pos;
+target_pos = {[0.5; 0.5; 0.5], [0.0; -0.6; 0.4], [-0.5; 0.5; 0.5]}; 
+params.pos_target = target_pos{1};
 params.vel_target = [0; 0; 0]; 
 
 % Calculate Joint target for Mode 1
-q_final = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), params.a2, params.a3);
+q_final = get_inverse_kinematics(target_pos{1}(1), target_pos{1}(2), target_pos{1}(3), params.a2, params.a3);
 params.q_target = q_final;
 
 % Gains
@@ -72,7 +72,44 @@ disp('Running Simulation with ode15s...');
 
 options = odeset('RelTol', 1e-3, 'AbsTol', 1e-3);
 % Using ode15s because high gains make the system 'stiff'
-[t, x] = ode15s(@(t,x) f_arm_dynamics(t, x, params), tspan, x0, options);
+t_all = {};
+x_all = {};
+
+for i = 1:length(target_pos)
+    fprintf('Running segment %d/%d...\n', i, length(target_pos));
+    
+    % Set the current target for this segment
+    params.pos_target = target_pos{i};
+    q_final = get_inverse_kinematics(target_pos{i}(1), target_pos{i}(2), target_pos{i}(3), params.a2, params.a3);
+    params.q_target = q_final;
+    
+    [t_segment, x_segment] = ode15s(@(t,x) f_arm_dynamics(t, x, params), tspan, x0, options);
+    
+    % Store results
+    t_all{end+1} = t_segment;
+    x_all{end+1} = x_segment;
+    
+    % Update the initial condition for the next segment
+    x0 = x_segment(end, :);
+    
+    % Update the trajectory start conditions for the next segment
+    params.q_start = x0(1:3)';
+    p_start = get_forward_kinematics(x0(1:3)', params.a2, params.a3);
+    params.pos_start = p_start;
+    params.traj_start_time = t_start;
+end
+
+% Concatenate all segments
+t = t_all{1};
+x = x_all{1};
+for i = 2:length(t_all)
+    % Add the duration of the previous segment to the time vector
+    t_segment = t_all{i};
+    x_segment = x_all{i};
+    t = [t; t(end) + t_segment(2:end)];
+    x = [x; x_segment(2:end,:)];
+end
+t_end = t(end);
 
 disp('Simulation Complete. Preparing Animation...');
 
@@ -131,8 +168,10 @@ xlabel('X'); ylabel('Y'); zlabel('Z');
 view(135, 30); 
 axis equal;
 
-% Plot target location as a green circle
-plot3(target_pos(1), target_pos(2), target_pos(3), 'go', 'MarkerSize', 10, 'MarkerFaceColor', '#00CC00');
+% Plot target locations as a green circle
+for i = 1:length(target_pos)
+    plot3(target_pos{i}(1), target_pos{i}(2), target_pos{i}(3), 'go', 'MarkerSize', 10, 'MarkerFaceColor', '#00CC00');
+end
 
 % Visual settings
 link_width = 0.05; 
