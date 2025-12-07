@@ -69,8 +69,13 @@ params.kd = 2*zeta*omega_n; % 20
 
 % --- CONTROL MODE ---
 % 1 = Joint Space Control (Computed Torque Control)
-% 2 = Operational Space Control (Inverse Dynamics)
+% 2 = Operational Space Control
 params.CONTROL_MODE = 1;
+
+% For Operational Space Control, choose the formulation:
+% false = PD Control with Gravity Compensation
+% true  = Inverse Dynamics (Computed Torque in Cartesian Space)
+params.USE_OP_SPACE_INVERSE_DYNAMICS = true;
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');
