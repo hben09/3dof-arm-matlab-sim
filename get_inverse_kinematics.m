@@ -33,7 +33,7 @@ function q_target = get_inverse_kinematics(px, py, pz, a2, a3)
     
     % Calculate Sine of theta3 (s3)
     % We choose Positive for "Elbow Down" solution (Siciliano 2.100)
-    s3 = sqrt(1 - c3^2); 
+    s3 = -sqrt(1 - c3^2); 
     
     theta3 = atan2(s3, c3);
     
