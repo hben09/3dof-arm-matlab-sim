@@ -48,23 +48,12 @@ function xdot = f_arm_dynamics(t, x, params)
     G = get_G_vector(q1, q2, q3, m1, m2, m3, a2, a3, g);
 
     %% Control
-    % WIP
-    % Extract Control Parameters
-    q_des = params.q_target;
-    Kp    = params.kp * eye(3); % Proportional Gain
-    Kd    = params.kd * eye(3); % Derivative Gain
-
-    % State (Current q and dq)
+    % Organize current state into vectors
     q_curr  = [q1; q2; q3];
     dq_curr = [dq1; dq2; dq3];
 
-
-    % Error
-    e  = q_des - q_curr;
-    de = [0;0;0] - dq_curr; % Desired velocity is zero
-    
-    % Control Law: tau = Kp*e + Kd*de + g(q)
-    tau = Kp*e + Kd*de + G;
+    % Pass 'G' because using Gravity Compensation
+    tau = get_control_torque(q_curr, dq_curr, params, G);
 
     %% Friction
     damping_coeff = 0.5;

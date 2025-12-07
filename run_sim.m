@@ -37,7 +37,7 @@ q3_0 = 0;          % Elbow straight
 x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; 
 
 % Control Targets
-target_pos = [0.5; 0.5; 0.5];
+target_pos = [0.3; 0.5; 0.3];
 q_des = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), params.a2, params.a3);
 params.q_target = q_des;
 params.kp = 20; % Stiffness gain
