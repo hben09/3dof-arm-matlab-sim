@@ -94,6 +94,13 @@ JO1 = [z0,       [0;0;0], [0;0;0]];
 JO2 = [z0,       z1,      [0;0;0]];
 JO3 = [z0,       z1,      z2];
 
+% End Effector Jacobian (Position and Orientation)
+J_end_effector = [JP3; JO3]; 
+
+% Time Derivative of the End Effector Position Jacobian
+J_pos = JP3;
+J_dot = diff(J_pos, q1)*dq1 + diff(J_pos, q2)*dq2 + diff(J_pos, q3)*dq3;
+
 %% Calculate Dynamics (Equations of Motion)
 
 %%% Mass Matrix (B) %%%
@@ -136,48 +143,28 @@ for k = 1:n
 end
 C_mat = simplify(C_mat);
 
-%% Export
-% This saves the results to .m files so you can use them in the simulation
-
+%% Export to MATLAB Functions
 disp('Generating MATLAB function files...');
 
+% --- Setup Output Directory ---
 output_dir = 'generated_functions';
 if ~exist(output_dir, 'dir')
    mkdir(output_dir);
 end
 addpath(output_dir);
 
+% --- Group variables for clarity ---
+q_vars = {q1, q2, q3};
+dq_vars = {dq1, dq2, dq3};
+mass_vars = {m1, m2, m3};
+geom_vars = {a2, a3};
+inertia_vars = {Ixx1, Iyy1, Izz1, Ixx2, Iyy2, Izz2, Ixx3, Iyy3, Izz3};
 
-matlabFunction(B, 'File', fullfile(output_dir, 'get_B_matrix'), ...
-    'Vars', {q1, q2, q3, m1, m2, m3, a2, a3, Ixx1, Iyy1, Izz1, Ixx2, Iyy2, Izz2, Ixx3, Iyy3, Izz3});
+% --- Export Functions ---
+matlabFunction(B, 'File', fullfile(output_dir, 'get_B_matrix'), 'Vars', [q_vars, mass_vars, geom_vars, inertia_vars]);
+matlabFunction(C_mat, 'File', fullfile(output_dir, 'get_C_matrix'), 'Vars', [q_vars, dq_vars, mass_vars, geom_vars, inertia_vars]);
+matlabFunction(G_vect, 'File', fullfile(output_dir, 'get_G_vector'), 'Vars', [q_vars, mass_vars, geom_vars, {g}]);
+matlabFunction(J_end_effector, 'File', fullfile(output_dir, 'get_Jacobian'), 'Vars', [q_vars, geom_vars]);
+matlabFunction(J_dot, 'File', fullfile(output_dir, 'get_J_dot'), 'Vars', [q_vars, dq_vars, geom_vars]);
 
-matlabFunction(C_mat, 'File', fullfile(output_dir, 'get_C_matrix'), ...
-    'Vars', {q1, q2, q3, dq1, dq2, dq3, m1, m2, m3, a2, a3, Ixx1, Iyy1, Izz1, Ixx2, Iyy2, Izz2, Ixx3, Iyy3, Izz3});
-
-matlabFunction(G_vect, 'File', fullfile(output_dir, 'get_G_vector'), ...
-    'Vars', {q1, q2, q3, m1, m2, m3, a2, a3, g});
-
-% The Geometric Jacobian J = [JP; JO]
-% We only need the top 3 rows (Linear Velocity) if we only control Position (X,Y,Z)
-J_linear = [JP1; JP2; JP3]; % Actually, usually we only care about the END EFFECTOR Jacobian (JP3)
-
-% Let's export the Jacobian for the End Effector (Link 3)
-J_end_effector = [JP3; JO3]; 
-
-matlabFunction(J_end_effector, 'File', fullfile(output_dir, 'get_Jacobian'), ...
-    'Vars', {q1, q2, q3, a2, a3});
-
-    % --- ADD THIS SECTION ---
-% Calculate Time Derivative of Jacobian (dJ/dt)
-% J_dot = dJ/dq * dq
-% We only care about the Position Jacobian (top 3 rows) for this controller
-J_pos = JP3; 
-
-% Matrix derivative: sum of partials * q_dot
-J_dot = diff(J_pos, q1)*dq1 + diff(J_pos, q2)*dq2 + diff(J_pos, q3)*dq3;
-
-% Export J_dot
-matlabFunction(J_dot, 'File', fullfile(output_dir, 'get_J_dot'), ...
-    'Vars', {q1, q2, q3, dq1, dq2, dq3, a2, a3});
-% ------------------------
-disp(['SUCCESS! Files generated in "' output_dir '" folder and added to path.']);
+disp(['SUCCESS! Files generated in "' output_dir '" folder.']);
