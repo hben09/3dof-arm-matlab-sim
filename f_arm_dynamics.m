@@ -56,11 +56,7 @@ function xdot = f_arm_dynamics(t, x, params)
     % ----------------------------------------------------------
 
     %% Control Strategy Selection
-    % 1 = Joint Space (Computed Torque / Trajectory)
-    % 2 = Operational Space (Jacobian Transpose / Virtual Spring)
-    CONTROL_MODE = 2; 
-    
-    if CONTROL_MODE == 1
+    if params.CONTROL_MODE == 1
         % --- MODE 1: JOINT SPACE ---
         % Uses params.q_target (Calculated via Inverse Kinematics in run_sim)
         
@@ -72,7 +68,7 @@ function xdot = f_arm_dynamics(t, x, params)
         tau = get_control_torque(q_curr, dq_curr, q_des, dq_des, ddq_des, ...
                                 B, C, G, params);
                                 
-    elseif CONTROL_MODE == 2
+    elseif params.CONTROL_MODE == 2
         % OPERATIONAL SPACE CONTROL
         
         % 1. Generate Cartesian Trajectory (Smooth path for X,Y,Z)

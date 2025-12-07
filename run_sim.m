@@ -67,6 +67,11 @@ zeta    = 1;  % Damping ratio (1 = no overshoot)
 params.kp = omega_n^2;      % 100
 params.kd = 2*zeta*omega_n; % 20
 
+% --- CONTROL MODE ---
+% 1 = Joint Space Control (Computed Torque Control)
+% 2 = Operational Space Control (Inverse Dynamics)
+params.CONTROL_MODE = 1;
+
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');
 
