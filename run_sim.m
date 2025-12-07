@@ -133,31 +133,8 @@ t_anim = t_start : 1/fps : t_end;
 x_anim = interp1(t, x, t_anim); 
 
 %% 5. Pre-calculate End Effector Path for Trace
-% This is done before the animation loop for efficiency.
-disp('Calculating end effector path for animation trace...');
-end_effector_path = zeros(length(t_anim), 3);
-for i = 1:length(t_anim)
-    q1_val = x_anim(i, 1);
-    q2_val = x_anim(i, 2);
-    q3_val = x_anim(i, 3);
-    
-    % --- KINEMATICS (copied from animation loop for consistency) ---
-    A1 = [cos(q1_val) 0 sin(q1_val) 0;
-          sin(q1_val) 0 -cos(q1_val) 0;
-          0 1 0 0;
-          0 0 0 1];
-    A2 = [cos(q2_val) -sin(q2_val) 0 params.a2*cos(q2_val);
-          sin(q2_val)  cos(q2_val) 0 params.a2*sin(q2_val);
-          0 0 1 0;
-          0 0 0 1];
-    A3 = [cos(q3_val) -sin(q3_val) 0 params.a3*cos(q3_val);
-          sin(q3_val)  cos(q3_val) 0 params.a3*sin(q3_val);
-          0 0 1 0;
-          0 0 0 1];
-          
-    T3 = A1 * A2 * A3;    
-    end_effector_path(i, :) = T3(1:3, 4)';
-end
+addpath('visualization');
+end_effector_path = get_end_effector_path(t_anim, x_anim, params);
 
 
 %% 5. Plot Static Results
@@ -170,7 +147,6 @@ title('Joint Angles vs Time');
 grid on;
 
 %% 6. 3D Animation
-addpath('visualization');
 animate_robot(t_anim, x_anim, end_effector_path, target_pos, params, t_end, fps);
 
 %% 7. Energy Check
