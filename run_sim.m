@@ -7,48 +7,119 @@
 clear; clc; close all;
 
 %% 1. Define Robot Parameters
+% --- Mass ---
 params.m1 = 1.0;  % Mass of Waist (kg)
 params.m2 = 5.0;  % Mass of Upper Arm (kg)
 params.m3 = 3.0;  % Mass of Forearm (kg)
 
+% --- Geometry ---
 params.a2 = 0.5;  % Length of Upper Arm (m)
 params.a3 = 0.5;  % Length of Forearm (m)
 
+% --- Environment ---
 params.g  = 9.81; % Gravity (m/s^2)
 
-% Inertia Matrices (Modeled roughly as slender rods)
+% --- Inertia ---
+% Inertia matrices are modeled as slender rods about their CoM.
 I_rod2 = (1/12) * params.m2 * params.a2^2;
 I_rod3 = (1/12) * params.m3 * params.a3^2;
-
-params.I1 = diag([0.01, 0.01, 0.01]);      % Small inertia for waist
-params.I2 = diag([0.01, I_rod2, I_rod2]);  % Upper arm
+params.I1 = diag([0.01, 0.01, 0.01]);      % Waist
+params.I2 = diag([0.01, I_rod2, I_rod2]);  % Upper Arm
 params.I3 = diag([0.01, I_rod3, I_rod3]);  % Forearm
 
-%% 2. Define Simulation Settings
-% t_end is simulation length in seconds.
+%% 2. Define Simulation & Control Settings
+% --- Simulation Time ---
 t_start = 0;
-t_end   = 10;
+t_end   = 5; % Simulation segment length (s)
 tspan   = [t_start, t_end];
 
-% Initial Conditions: x = [q1; q2; q3; dq1; dq2; dq3]
-q1_0 = 0;          % Facing forward
-q2_0 = 0;          % Shoulder horizontal
-q3_0 = 0;          % Elbow straight
+% --- Initial Conditions ---
+% State vector: x = [q1; q2; q3; dq1; dq2; dq3]
+q1_0 = -0.2; % Facing forward
+q2_0 = 0.0;  % Shoulder horizontal
+q3_0 = -0.2; % Elbow straight
 x0 = [q1_0; q2_0; q3_0; 0; 0; 0]; 
 
-% Control Targets
-target_pos = [0.0; 0.2; -0.3];
-q_des = get_inverse_kinematics(target_pos(1), target_pos(2), target_pos(3), params.a2, params.a3);
-params.q_target = q_des;
-params.kp = 20; % Stiffness gain
-params.kd = 10;  % Damping gain
+% --- Target Configuration ---
+% Define a sequence of target positions for the end-effector.
+target_pos = {[0.5; 0.5; 0.5], [0.0; -0.6; 0.4], [-0.5; 0.5; 0.5]}; 
+params.vel_target = [0; 0; 0]; % Target velocity is always zero.
+
+% --- Trajectory Timing ---
+params.traj_start_time = 1.0; 
+params.traj_duration = 4.0;
+
+% --- Initial Trajectory Conditions ---
+% These are updated at the start of each new segment in the loop.
+params.q_start = x0(1:3);
+params.pos_start = get_forward_kinematics(x0(1:3), params.a2, params.a3);
+
+% --- Controller Gains ---
+omega_n = 10; % Natural frequency (higher = stiffer/faster response)
+zeta    = 1;  % Damping ratio (1 = critically damped)
+params.kp = omega_n^2;
+params.kd = 2*zeta*omega_n;
+
+% --- Control Configuration ---
+
+% 1. Choose Control Space
+% 'JOINT'       = Control joint angles (q1, q2, q3)
+% 'OPERATIONAL' = Control end-effector position (x, y, z)
+params.CONTROL_SPACE = 'JOINT'; 
+
+% 2. Choose Reference Type
+% true  = Follow a smooth path (Trajectory Planning)
+% false = Jump to target immediately (Step Input)
+params.USE_TRAJECTORY = false;
+
+% 3. Choose Dynamics Compensation
+% true  = Full Inverse Dynamics (Cancel B, C, G) -> "Computed Torque"
+% false = Gravity Compensation Only (Cancel G)   -> "PD Control"
+params.USE_INVERSE_DYNAMICS = false;
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');
 
 options = odeset('RelTol', 1e-3, 'AbsTol', 1e-3);
 % Using ode15s because high gains make the system 'stiff'
-[t, x] = ode15s(@(t,x) f_arm_dynamics(t, x, params), tspan, x0, options);
+t_all = {};
+x_all = {};
+
+for i = 1:length(target_pos)
+    fprintf('Running segment %d/%d...\n', i, length(target_pos));
+    
+    % Set the current target for this segment
+    params.pos_target = target_pos{i};
+    q_final = get_inverse_kinematics(target_pos{i}(1), target_pos{i}(2), target_pos{i}(3), params.a2, params.a3);
+    params.q_target = q_final;
+    
+    [t_segment, x_segment] = ode15s(@(t,x) f_arm_dynamics(t, x, params), tspan, x0, options);
+    
+    % Store results
+    t_all{end+1} = t_segment;
+    x_all{end+1} = x_segment;
+    
+    % Update the initial condition for the next segment
+    x0 = x_segment(end, :);
+    
+    % Update the trajectory start conditions for the next segment
+    params.q_start = x0(1:3)';
+    p_start = get_forward_kinematics(x0(1:3)', params.a2, params.a3);
+    params.pos_start = p_start;
+    params.traj_start_time = t_start;
+end
+
+% Concatenate all segments
+t = t_all{1};
+x = x_all{1};
+for i = 2:length(t_all)
+    % Add the duration of the previous segment to the time vector
+    t_segment = t_all{i};
+    x_segment = x_all{i};
+    t = [t; t(end) + t_segment(2:end)];
+    x = [x; x_segment(2:end,:)];
+end
+t_end = t(end);
 
 disp('Simulation Complete. Preparing Animation...');
 
@@ -61,6 +132,11 @@ t_anim = t_start : 1/fps : t_end;
 % This prevents jitter from variable time steps
 x_anim = interp1(t, x, t_anim); 
 
+%% 5. Pre-calculate End Effector Path for Trace
+addpath('visualization');
+end_effector_path = get_end_effector_path(t_anim, x_anim, params);
+
+
 %% 5. Plot Static Results
 figure('Name', 'Joint Angles');
 plot(t, x(:, 1:3), 'LineWidth', 2);
@@ -70,83 +146,8 @@ ylabel('Angle (rad)');
 title('Joint Angles vs Time');
 grid on;
 
-%% 6. 3D Animation with Real-Time Sync
-h_fig = figure('Name', '3D Animation');
-axis_limit = params.a2 + params.a3 + 0.1;
-axis([-axis_limit axis_limit -axis_limit axis_limit -axis_limit axis_limit]);
-grid on; hold on;
-xlabel('X'); ylabel('Y'); zlabel('Z');
-view(135, 30); 
-axis equal;    
-
-% Visual settings
-link_width = 0.05; 
-color_base = [0.2 0.2 0.2]; 
-color_arm2 = [0   0   1];   
-color_arm3 = [1   0   0];   
-
-disp('Starting Animation...');
-tic; % Start Real-World Timer
-
-while ishandle(h_fig) % Loop until figure is closed or time runs out
-    
-    % 1. Get current real-world time
-    t_current_real = toc;
-    
-    % 2. Stop if we exceed simulation duration
-    if t_current_real > t_end
-        break;
-    end
-    
-    % 3. Find the closest index in our INTERPOLATED data
-    % Formula: index = (time * fps) + 1
-    idx = round(t_current_real * fps) + 1;
-    
-    % Safety check for index bounds
-    if idx > length(t_anim)
-        idx = length(t_anim);
-    end
-    
-    % Get angles from interpolated data
-    q1_val = x_anim(idx, 1);
-    q2_val = x_anim(idx, 2);
-    q3_val = x_anim(idx, 3);
-    
-    % --- KINEMATICS ---
-    % A1 (Base to Shoulder)
-    A1 = [cos(q1_val) 0 sin(q1_val) 0;
-          sin(q1_val) 0 -cos(q1_val) 0;
-          0 1 0 0;
-          0 0 0 1];
-    % A2 (Shoulder to Elbow)
-    A2 = [cos(q2_val) -sin(q2_val) 0 params.a2*cos(q2_val);
-          sin(q2_val)  cos(q2_val) 0 params.a2*sin(q2_val);
-          0 0 1 0;
-          0 0 0 1];
-    % A3 (Elbow to Wrist)
-    A3 = [cos(q3_val) -sin(q3_val) 0 params.a3*cos(q3_val);
-          sin(q3_val)  cos(q3_val) 0 params.a3*sin(q3_val);
-          0 0 1 0;
-          0 0 0 1];
-          
-    % Global Transforms
-    T1 = A1;         
-    T2 = T1 * A2;    
-    T3 = T2 * A3;    
-    
-    % --- DRAWING ---
-    cla; % Clear previous frame
-    
-    draw_link_3d(T1, 0.1, link_width*1.5, color_base);
-    draw_link_3d(T2, params.a2, link_width, color_arm2);
-    draw_link_3d(T3, params.a3, link_width, color_arm3);
-    
-    title(['Time: ' num2str(t_anim(idx), '%.2f') ' s / ' num2str(t_end) ' s']);
-    axis([-axis_limit axis_limit -axis_limit axis_limit -axis_limit axis_limit]);
-    
-    drawnow;
-
-end
+%% 6. 3D Animation
+animate_robot(t_anim, x_anim, end_effector_path, target_pos, params, t_end, fps);
 
 %% 7. Energy Check
 % Using RAW data (t, x) for physics accuracy

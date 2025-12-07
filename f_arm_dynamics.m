@@ -48,12 +48,78 @@ function xdot = f_arm_dynamics(t, x, params)
     G = get_G_vector(q1, q2, q3, m1, m2, m3, a2, a3, g);
 
     %% Control
-    % Organize current state into vectors
+
+    % --- FIX: Define state vectors BEFORE the if/else block ---
+    % Organize current state (Available for ALL control modes)
     q_curr  = [q1; q2; q3];
     dq_curr = [dq1; dq2; dq3];
+    % ----------------------------------------------------------
 
-    % Pass 'G' because using Gravity Compensation
-    tau = get_control_torque(q_curr, dq_curr, params, G);
+    %% Control Logic
+    
+    % --- 1. Determine Desired State (Reference) ---
+    if strcmp(params.CONTROL_SPACE, 'JOINT')
+        % Joint Space Reference
+        if params.USE_TRAJECTORY
+            [ref_pos, ref_vel, ref_acc] = get_cubic_traj(t, params.traj_start_time, ...
+                                                    params.traj_duration, ...
+                                                    params.q_start, ...
+                                                    params.q_target);
+        else
+            % Step Input (Fixed Target)
+            ref_pos = params.q_target;
+            ref_vel = zeros(3,1);
+            ref_acc = zeros(3,1);
+        end
+        
+    elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
+        % Operational Space Reference
+        if params.USE_TRAJECTORY
+            [ref_pos, ref_vel, ref_acc] = get_cartesian_traj(t, params.traj_start_time, ...
+                                                    params.traj_duration, ...
+                                                    params.pos_start, ...
+                                                    params.pos_target);
+        else
+            % Step Input (Fixed Target)
+            ref_pos = params.pos_target;
+            ref_vel = zeros(3,1);
+            ref_acc = zeros(3,1);
+        end
+    end
+
+    %% --- 2. Calculate Control Torque ---
+    
+    if strcmp(params.CONTROL_SPACE, 'JOINT')
+        % --- JOINT SPACE CONTROL ---
+        
+        if params.USE_INVERSE_DYNAMICS
+            % Method: Computed Torque Control (Inverse Dynamics)
+            % tau = B(q)*y + C*dq + G
+            tau = get_control_torque(q_curr, dq_curr, ref_pos, ref_vel, ref_acc, ...
+                                     B, C, G, params);
+        else
+            % Method: PD Control + Gravity Compensation
+            tau = get_joint_space_pd_control(q_curr, dq_curr, ref_pos, ref_vel, G, params);
+        end
+
+    elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
+        % --- OPERATIONAL SPACE CONTROL ---
+        
+        if params.USE_INVERSE_DYNAMICS
+            % Method: Operational Space Inverse Dynamics
+            % Decouples task space into linear double integrators
+            tau = get_op_space_inverse_dynamics(q_curr, dq_curr, ...
+                                                ref_pos, ref_vel, ref_acc, ...
+                                                params);
+        else
+            % Method: Operational Space PD + Gravity Compensation
+            % Acts like a Cartesian spring
+            % Note: This function needs to be updated to accept ref_vel if you want damping tracking
+            tau = get_operational_space_control(q_curr, dq_curr, ...
+                                                ref_pos, ref_vel, ...
+                                                params, G);
+        end
+    end
 
     %% Friction
     damping_coeff = 0.5;
