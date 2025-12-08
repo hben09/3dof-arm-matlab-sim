@@ -48,13 +48,12 @@ function tau = get_op_space_inverse_dynamics(q_curr, dq_curr, p_target, v_target
     %% 4. Inverse Dynamics (Inner Loop)
     % Map Cartesian acceleration 'y' to Joint Torque 'tau'
     % Formula: tau = B * J^-1 * (y - J_dot*dq) + C*dq + G
-    
-    % Note: Using matrix backslash (\) acts as inverse
-    % This part essentially solves for the joint accelerations (ddq) 
-    % that would produce the cartesian acceleration (y)
-    
     inv_J_term = J_pos \ (y - J_dot * dq_curr);
     
-    tau = B * inv_J_term + C * dq_curr + G;
-
+    % tau = B * inv_J_term + C * dq_curr + G;
+    damping_coeff = 0.5; % Must match f_arm_dynamics.m
+    F_friction = damping_coeff * dq_curr; 
+    
+    % Add F_friction to the final torque
+    tau = B * inv_J_term + C * dq_curr + G + F_friction;
 end

@@ -10,7 +10,7 @@ clear; clc; close all;
 % --- Mass ---
 params.m1 = 1.0;  % Mass of Waist (kg)
 params.m2 = 5.0;  % Mass of Upper Arm (kg)
-params.m3 = 3.0;  % Mass of Forearm (kg)
+params.m3 = 300.0;  % Mass of Forearm (kg)
 
 % --- Geometry ---
 params.a2 = 0.5;  % Length of Upper Arm (m)
@@ -65,17 +65,17 @@ params.kd = 2*zeta*omega_n;
 % 1. Choose Control Space
 % 'JOINT'       = Control joint angles (q1, q2, q3)
 % 'OPERATIONAL' = Control end-effector position (x, y, z)
-params.CONTROL_SPACE = 'JOINT'; 
+params.CONTROL_SPACE = 'OPERATIONAL'; 
 
 % 2. Choose Reference Type
 % true  = Follow a smooth path (Trajectory Planning)
 % false = Jump to target immediately (Step Input)
-params.USE_TRAJECTORY = false;
+params.USE_TRAJECTORY = true;
 
 % 3. Choose Dynamics Compensation
 % true  = Full Inverse Dynamics (Cancel B, C, G) -> "Computed Torque"
 % false = Gravity Compensation Only (Cancel G)   -> "PD Control"
-params.USE_INVERSE_DYNAMICS = false;
+params.USE_INVERSE_DYNAMICS = true;
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');
@@ -205,4 +205,84 @@ legend('Total Energy', 'Kinetic (T)', 'Potential (U)');
 title('Energy Conservation Check');
 xlabel('Time (s)');
 ylabel('Energy (J)');
+grid on;
+
+%% 8. Plot Tracking Error (New Section)
+figure('Name', 'Cartesian Tracking Error');
+hold on; grid on;
+
+% Initialize storage for concatenated error data
+all_time = [];
+all_error_norm = [];
+all_error_xyz = [];
+
+% Re-iterate through segments to reconstruct the reference signal
+current_time_offset = 0;
+
+% Re-initialize start conditions exactly as they were at the start of the sim
+x_start_seg = [q1_0; q2_0; q3_0; 0; 0; 0];
+pos_start_seg = get_forward_kinematics(x_start_seg(1:3), params.a2, params.a3);
+
+for i = 1:length(t_all)
+    % Extract simulation data for this segment
+    t_seg = t_all{i}; % Time vector (0 to 5s)
+    x_seg = x_all{i}; % State vector
+    
+    % Current target for this segment
+    pos_target_seg = target_pos{i};
+    
+    % Storage for this segment
+    err_seg_xyz = zeros(length(t_seg), 3);
+    err_seg_norm = zeros(length(t_seg), 1);
+    
+    for k = 1:length(t_seg)
+        t_curr = t_seg(k);
+        q_curr = x_seg(k, 1:3)';
+        
+        % 1. Get Actual Position (FK)
+        pos_actual = get_forward_kinematics(q_curr, params.a2, params.a3);
+        
+        % 2. Get Desired Position (Re-calculate Trajectory)
+        if params.USE_TRAJECTORY
+             % Note: Using 0 as start time because t_seg starts at 0 for every segment
+             [pos_des, ~, ~] = get_cartesian_traj(t_curr, 0, ...
+                                                 params.traj_duration, ...
+                                                 pos_start_seg, ...
+                                                 pos_target_seg);
+        else
+             pos_des = pos_target_seg;
+        end
+        
+        % 3. Calculate Error
+        err_seg_xyz(k, :) = (pos_des - pos_actual)';
+        err_seg_norm(k) = norm(pos_des - pos_actual);
+    end
+    
+    % Append to global lists for plotting
+    % Shift time by the offset so segments appear sequentially
+    all_time = [all_time; t_seg + current_time_offset];
+    all_error_xyz = [all_error_xyz; err_seg_xyz];
+    all_error_norm = [all_error_norm; err_seg_norm];
+    
+    % Update offset and start conditions for next loop (just like in the main sim)
+    current_time_offset = current_time_offset + t_seg(end);
+    x_start_seg = x_seg(end, :)';
+    pos_start_seg = get_forward_kinematics(x_start_seg(1:3), params.a2, params.a3);
+end
+
+% --- PLOT 1: Error Norm (Scalar distance from target) ---
+subplot(2,1,1);
+plot(all_time, all_error_norm, 'k', 'LineWidth', 1.5);
+title('Position Error Norm ||x_{des} - x_{act}||');
+xlabel('Time (s)');
+ylabel('Error (m)');
+grid on;
+
+% --- PLOT 2: Component Error (X, Y, Z) ---
+subplot(2,1,2);
+plot(all_time, all_error_xyz, 'LineWidth', 1.5);
+legend('X Error', 'Y Error', 'Z Error');
+title('Component Errors');
+xlabel('Time (s)');
+ylabel('Error (m)');
 grid on;
