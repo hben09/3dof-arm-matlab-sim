@@ -149,63 +149,63 @@ grid on;
 %% 6. 3D Animation
 animate_robot(t_anim, x_anim, end_effector_path, target_pos, params, t_end, fps);
 
-% %% 7. Energy Check
-% % Using RAW data (t, x) for physics accuracy
-% E_total = zeros(length(t), 1);
-% T_log = zeros(length(t), 1);
-% U_log = zeros(length(t), 1);
+%% 7. Energy Check
+% Using RAW data (t, x) for physics accuracy
+E_total = zeros(length(t), 1);
+T_log = zeros(length(t), 1);
+U_log = zeros(length(t), 1);
 
-% for i = 1:length(t)
-%     q_now = x(i, 1:3)';
-%     dq_now = x(i, 4:6)';
+for i = 1:length(t)
+    q_now = x(i, 1:3)';
+    dq_now = x(i, 4:6)';
     
-%     % 1. Mass Matrix (B)
-%     B = get_B_matrix(q_now(1), q_now(2), q_now(3), ...
-%         params.m1, params.m2, params.m3, params.a2, params.a3, ...
-%         params.I1(1,1), params.I1(2,2), params.I1(3,3), ...
-%         params.I2(1,1), params.I2(2,2), params.I2(3,3), ...
-%         params.I3(1,1), params.I3(2,2), params.I3(3,3));
+    % 1. Mass Matrix (B)
+    B = get_B_matrix(q_now(1), q_now(2), q_now(3), ...
+        params.m1, params.m2, params.m3, params.a2, params.a3, ...
+        params.I1(1,1), params.I1(2,2), params.I1(3,3), ...
+        params.I2(1,1), params.I2(2,2), params.I2(3,3), ...
+        params.I3(1,1), params.I3(2,2), params.I3(3,3));
         
-%     % 2. Kinetic Energy
-%     T_val = 0.5 * dq_now' * B * dq_now;
+    % 2. Kinetic Energy
+    T_val = 0.5 * dq_now' * B * dq_now;
     
-%     % 3. Potential Energy (Recalculating Transforms for CoM heights)
-%     % A1..A3 setup copied from kinematics logic
-%     c1=cos(q_now(1)); s1=sin(q_now(1));
-%     c2=cos(q_now(2)); s2=sin(q_now(2));
-%     c3=cos(q_now(3)); s3=sin(q_now(3));
+    % 3. Potential Energy (Recalculating Transforms for CoM heights)
+    % A1..A3 setup copied from kinematics logic
+    c1=cos(q_now(1)); s1=sin(q_now(1));
+    c2=cos(q_now(2)); s2=sin(q_now(2));
+    c3=cos(q_now(3)); s3=sin(q_now(3));
     
-%     A1=[c1 0 s1 0; s1 0 -c1 0; 0 1 0 0; 0 0 0 1];
-%     A2=[c2 -s2 0 params.a2*c2; s2 c2 0 params.a2*s2; 0 0 1 0; 0 0 0 1];
-%     A3=[c3 -s3 0 params.a3*c3; s3 c3 0 params.a3*s3; 0 0 1 0; 0 0 0 1];
+    A1=[c1 0 s1 0; s1 0 -c1 0; 0 1 0 0; 0 0 0 1];
+    A2=[c2 -s2 0 params.a2*c2; s2 c2 0 params.a2*s2; 0 0 1 0; 0 0 0 1];
+    A3=[c3 -s3 0 params.a3*c3; s3 c3 0 params.a3*s3; 0 0 1 0; 0 0 0 1];
     
-%     T1 = A1; T2 = T1*A2; T3 = T2*A3;
+    T1 = A1; T2 = T1*A2; T3 = T2*A3;
     
-%     p1 = T1(1:3, 4);
-%     p2 = T2(1:3, 4);
-%     p3 = T3(1:3, 4);
+    p1 = T1(1:3, 4);
+    p2 = T2(1:3, 4);
+    p3 = T3(1:3, 4);
     
-%     % CoM Heights
-%     h1 = p1(3);             
-%     h2 = (p1(3) + p2(3))/2; 
-%     h3 = (p2(3) + p3(3))/2;
+    % CoM Heights
+    h1 = p1(3);             
+    h2 = (p1(3) + p2(3))/2; 
+    h3 = (p2(3) + p3(3))/2;
     
-%     U_val = params.m1*params.g*h1 + params.m2*params.g*h2 + params.m3*params.g*h3;
+    U_val = params.m1*params.g*h1 + params.m2*params.g*h2 + params.m3*params.g*h3;
         
-%     E_total(i) = T_val + U_val;
-%     T_log(i) = T_val;
-%     U_log(i) = U_val;
-% end
+    E_total(i) = T_val + U_val;
+    T_log(i) = T_val;
+    U_log(i) = U_val;
+end
 
-% figure;
-% plot(t, E_total, 'k', 'LineWidth', 2); hold on;
-% plot(t, T_log, '--r');
-% plot(t, U_log, '--b');
-% legend('Total Energy', 'Kinetic (T)', 'Potential (U)');
-% title('Energy Conservation Check');
-% xlabel('Time (s)');
-% ylabel('Energy (J)');
-% grid on;
+figure;
+plot(t, E_total, 'k', 'LineWidth', 2); hold on;
+plot(t, T_log, '--r');
+plot(t, U_log, '--b');
+legend('Total Energy', 'Kinetic (T)', 'Potential (U)');
+title('Energy Conservation Check');
+xlabel('Time (s)');
+ylabel('Energy (J)');
+grid on;
 
 %% 8. Plot Tracking Error (New Section)
 figure('Name', 'Cartesian Tracking Error');
