@@ -46,7 +46,7 @@ target_pos = {[0.5; 0.5; 0.5], [0.0; -0.6; 0.4], [-0.5; 0.5; 0.2]};
 params.vel_target = [0; 0; 0]; % Target velocity is always zero.
 
 % --- Trajectory Timing ---
-params.traj_start_time = 1.0; 
+params.traj_start_time = 0.0; 
 params.traj_duration = 4.0;
 
 % --- Initial Trajectory Conditions ---
@@ -65,7 +65,7 @@ params.kd = 2*zeta*omega_n;
 % 1. Choose Control Space
 % 'JOINT'       = Control joint angles (q1, q2, q3)
 % 'OPERATIONAL' = Control end-effector position (x, y, z)
-params.CONTROL_SPACE = 'JOINT'; 
+params.CONTROL_SPACE = 'OPERATIONAL';
 
 % 2. Choose Reference Type
 % true  = Follow a smooth path (Trajectory Planning)
