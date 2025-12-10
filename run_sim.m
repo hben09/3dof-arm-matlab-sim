@@ -65,12 +65,12 @@ params.kd = 2*zeta*omega_n;
 % 1. Choose Control Space
 % 'JOINT'       = Control joint angles (q1, q2, q3)
 % 'OPERATIONAL' = Control end-effector position (x, y, z)
-params.CONTROL_SPACE = 'JOINT'; 
+params.CONTROL_SPACE = 'OPERATIONAL'; 
 
 % 2. Choose Reference Type
 % true  = Follow a smooth path (Trajectory Planning)
 % false = Jump to target immediately (Step Input)
-params.USE_TRAJECTORY = false;
+params.USE_TRAJECTORY = true;
 
 % 3. Choose Dynamics Compensation
 % true  = Full Inverse Dynamics (Cancel B, C, G) -> "Computed Torque"
@@ -185,15 +185,35 @@ for i = 1:length(t_all)
         % 1. Get Actual Position (FK)
         pos_actual = get_forward_kinematics(q_curr, params.a2, params.a3);
         
-        % 2. Get Desired Position (Re-calculate Trajectory)
+        % 2. Get Desired Position (Re-calculate Reference correctly)
         if params.USE_TRAJECTORY
-             % Note: Using 0 as start time because t_seg starts at 0 for every segment
-             [pos_des, ~, ~] = get_cartesian_traj(t_curr, 0, ...
-                                                 params.traj_duration, ...
-                                                 pos_start_seg, ...
-                                                 pos_target_seg);
+            if strcmp(params.CONTROL_SPACE, 'JOINT')
+                % A. Joint Space: Reconstruct the angle trajectory first
+                % We need the target angles for this segment (q_final)
+                % Note: We can re-compute q_final using the segment target
+                q_target_seg = get_inverse_kinematics(pos_target_seg(1), ...
+                                                      pos_target_seg(2), ...
+                                                      pos_target_seg(3), ...
+                                                      params.a2, params.a3);
+                                                      
+                [q_des, ~, ~] = get_cubic_traj(t_curr, 0, ...
+                                             params.traj_duration, ...
+                                             x_start_seg(1:3), ...
+                                             q_target_seg);
+                
+                % Convert desired angles to Cartesian to compare with actual
+                pos_des = get_forward_kinematics(q_des, params.a2, params.a3);
+                
+            elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
+                % B. Operational Space: Reconstruct the straight line
+                [pos_des, ~, ~] = get_cartesian_traj(t_curr, 0, ...
+                                                    params.traj_duration, ...
+                                                    pos_start_seg, ...
+                                                    pos_target_seg);
+            end
         else
-             pos_des = pos_target_seg;
+            % Step Input (No trajectory)
+            pos_des = pos_target_seg;
         end
         
         % 3. Calculate Error
