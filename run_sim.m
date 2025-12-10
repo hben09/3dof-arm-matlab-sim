@@ -65,7 +65,7 @@ params.kd = 2*zeta*omega_n;
 % 1. Choose Control Space
 % 'JOINT'       = Control joint angles (q1, q2, q3)
 % 'OPERATIONAL' = Control end-effector position (x, y, z)
-params.CONTROL_SPACE = 'OPERATIONAL'; 
+params.CONTROL_SPACE = 'JOINT'; 
 
 % 2. Choose Reference Type
 % true  = Follow a smooth path (Trajectory Planning)
@@ -219,6 +219,7 @@ plot(all_time, all_error_norm, 'k', 'LineWidth', 1.5);
 title('Position Error Norm ||x_{des} - x_{act}||');
 xlabel('Time (s)');
 ylabel('Error (m)');
+ylim([0, 1.5]);
 grid on;
 
 % --- PLOT 2: Component Error (X, Y, Z) ---
@@ -228,4 +229,5 @@ legend('X Error', 'Y Error', 'Z Error');
 title('Component Errors');
 xlabel('Time (s)');
 ylabel('Error (m)');
+ylim([-1, 1]);
 grid on;

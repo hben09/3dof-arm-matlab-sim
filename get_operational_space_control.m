@@ -4,19 +4,7 @@ function tau = get_operational_space_control(q_curr, dq_curr, pos_target, vel_ta
 % Acts like a virtual spring pulling the end-effector to pos_target.
 
     %% 1. Calculate Forward Kinematics (Current X,Y,Z)
-    % You can reuse your A matrices logic or just implement the direct equations
-    % Simplified forward kinematics for the end effector position:
-    c1=cos(q_curr(1)); s1=sin(q_curr(1));
-    c2=cos(q_curr(2)); s2=sin(q_curr(2));
-    c23=cos(q_curr(2)+q_curr(3)); s23=sin(q_curr(2)+q_curr(3));
-    
-    % Position of end effector (See derive_arm_equations for source)
-    x_curr = c1 * (params.a2*c2 + params.a3*c23);
-    y_curr = s1 * (params.a2*c2 + params.a3*c23);
-    z_curr = params.a2*s2 + params.a3*s23;
-    
-    p_curr = [x_curr; y_curr; z_curr];
-
+    p_curr = get_forward_kinematics(q_curr, params.a2, params.a3);
     %% 2. Get Jacobian
     % Calculate J (6x3 matrix)
     J_full = get_Jacobian(q_curr(1), q_curr(2), q_curr(3), params.a2, params.a3);
