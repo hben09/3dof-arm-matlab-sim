@@ -10,7 +10,7 @@ clear; clc; close all;
 % --- Mass ---
 params.m1 = 1.0;  % Mass of Waist (kg)
 params.m2 = 5.0;  % Mass of Upper Arm (kg)
-params.m3 = 300.0;  % Mass of Forearm (kg)
+params.m3 = 3.0;  % Mass of Forearm (kg)
 
 % --- Geometry ---
 params.a2 = 0.5;  % Length of Upper Arm (m)
@@ -70,7 +70,7 @@ params.CONTROL_SPACE = 'OPERATIONAL';
 % 2. Choose Reference Type
 % true  = Follow a smooth path (Trajectory Planning)
 % false = Jump to target immediately (Step Input)
-params.USE_TRAJECTORY = true;
+params.USE_TRAJECTORY = false;
 
 % 3. Choose Dynamics Compensation
 % true  = Full Inverse Dynamics (Cancel B, C, G) -> "Computed Torque"

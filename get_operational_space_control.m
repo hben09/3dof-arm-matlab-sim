@@ -32,8 +32,8 @@ function tau = get_operational_space_control(q_curr, dq_curr, pos_target, vel_ta
     % Calculate operational space velocity
     v_curr = J_pos * dq_curr;
     
-    Kp_cart = diag([500, 500, 500]); 
-    Kd_cart = diag([50, 50, 50]);
+    Kp_cart = params.kp * eye(3);
+    Kd_cart = params.kd * eye(3);
 
     pos_err = pos_target - p_curr;
     
