@@ -42,7 +42,7 @@ x0 = [q1_0; q2_0; q3_0; 0; 0; 0];
 
 % --- Target Configuration ---
 % Define a sequence of target positions for the end-effector.
-target_pos = {[0.5; 0.5; 0.5], [0.0; -0.6; 0.4], [-0.5; 0.5; 0.5]}; 
+target_pos = {[0.5; 0.5; 0.5], [0.0; -0.6; 0.4], [-0.5; 0.5; 0.2]}; 
 params.vel_target = [0; 0; 0]; % Target velocity is always zero.
 
 % --- Trajectory Timing ---
