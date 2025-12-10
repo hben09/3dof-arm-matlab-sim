@@ -65,7 +65,7 @@ params.kd = 2*zeta*omega_n;
 % 1. Choose Control Space
 % 'JOINT'       = Control joint angles (q1, q2, q3)
 % 'OPERATIONAL' = Control end-effector position (x, y, z)
-params.CONTROL_SPACE = 'OPERATIONAL'; 
+params.CONTROL_SPACE = 'JOINT'; 
 
 % 2. Choose Reference Type
 % true  = Follow a smooth path (Trajectory Planning)
@@ -136,6 +136,68 @@ x_anim = interp1(t, x, t_anim);
 addpath('visualization');
 end_effector_path = get_end_effector_path(t_anim, x_anim, params);
 
+%% 5b. Calculate "Ghost Goal" Path (Commanded Position)
+% This determines where the controller WANTS the robot to be at every frame.
+% It handles both Trajectory ON/OFF and Joint/Operational spaces.
+
+ghost_path = zeros(length(t_anim), 3);
+current_time_offset = 0;
+
+% Re-initialize start conditions exactly as simulation started
+x_start_seg = [q1_0; q2_0; q3_0; 0; 0; 0];
+pos_start_seg = get_forward_kinematics(x_start_seg(1:3), params.a2, params.a3);
+
+% Loop through each target segment to build the continuous ghost path
+for i = 1:length(target_pos)
+    % Duration of this specific segment (derived from simulation data)
+    t_seg_duration = t_all{i}(end);
+    
+    % Find animation frames belonging to this segment
+    seg_indices = find(t_anim >= current_time_offset & t_anim < (current_time_offset + t_seg_duration));
+    
+    % Goals for this segment
+    pos_target_seg = target_pos{i};
+    % Calculate Joint Target (IK) for Joint Space control
+    q_target_seg   = get_inverse_kinematics(pos_target_seg(1), pos_target_seg(2), pos_target_seg(3), params.a2, params.a3);
+    
+    for k = seg_indices
+        % Local time within the segment (e.g., 0.0 to 4.0s)
+        t_local = t_anim(k) - current_time_offset;
+        
+        if params.USE_TRAJECTORY
+            % --- TRAJECTORY MODE ---
+            if strcmp(params.CONTROL_SPACE, 'JOINT')
+                % 1. Get Desired Joint Angles
+                [q_des, ~, ~] = get_cubic_traj(t_local, 0, params.traj_duration, x_start_seg(1:3), q_target_seg);
+                % 2. FK to find where that puts the end effector
+                p_des = get_forward_kinematics(q_des, params.a2, params.a3);
+                ghost_path(k, :) = p_des';
+                
+            elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
+                % 1. Get Desired Cartesian Position directly
+                [p_des, ~, ~] = get_cartesian_traj(t_local, 0, params.traj_duration, pos_start_seg, pos_target_seg);
+                ghost_path(k, :) = p_des';
+            end
+        else
+            % --- STEP INPUT MODE ---
+            % The command jumps instantly to the target
+            ghost_path(k, :) = pos_target_seg';
+        end
+    end
+    
+    % Update start conditions for the next segment loop
+    current_time_offset = current_time_offset + t_seg_duration;
+    x_start_seg = x_all{i}(end, :)';
+    pos_start_seg = get_forward_kinematics(x_start_seg(1:3), params.a2, params.a3);
+end
+
+% Ensure the last frame holds the final target to avoid drop-off
+if ~isempty(ghost_path)
+    ghost_path(end, :) = target_pos{end}';
+end
+
+% --- UPDATE ANIMATION CALL ---
+% Pass 'ghost_path' as a new argument
 
 %% 5. Plot Static Results
 figure('Name', 'Joint Angles');
@@ -147,7 +209,7 @@ title('Joint Angles vs Time');
 grid on;
 
 %% 6. 3D Animation
-animate_robot(t_anim, x_anim, end_effector_path, target_pos, params, t_end, fps);
+animate_robot(t_anim, x_anim, end_effector_path, target_pos, params, t_end, fps, ghost_path);
 
 
 %% 8. Plot Tracking Error (New Section)
