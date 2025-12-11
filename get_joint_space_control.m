@@ -1,33 +1,33 @@
-function tau = get_operational_space_control(q_curr, dq_curr, p_des, v_des, params, varargin)
-% GET_OPERATIONAL_SPACE_CONTROL
+function tau = get_joint_space_control(q_curr, dq_curr, q_des, dq_des, params, varargin)
+% GET_JOINT_SPACE_CONTROL
 %
-% Computes joint torques using operational space control with two available modes:
+% Computes joint torques using joint space control with two available modes:
 %   1. Simple PD control with gravity compensation
-%   2. Inverse dynamics control (computed torque in Cartesian space)
+%   2. Inverse dynamics control (computed torque method)
 %
 % INPUTS:
 %   q_curr      : Current joint angles [3x1] (rad)
 %   dq_curr     : Current joint velocities [3x1] (rad/s)
-%   p_des       : Desired end-effector position [3x1] (m)
-%   v_des       : Desired end-effector velocity [3x1] (m/s)
+%   q_des       : Desired joint angles [3x1] (rad)
+%   dq_des      : Desired joint velocities [3x1] (rad/s)
 %   params      : Structure containing control gains and physical parameters
-%   varargin    : G (simple mode) or a_des, 'inverse_dynamics'
+%   varargin    : G (simple mode) or ddq_des, 'inverse_dynamics'
 %
 % OUTPUTS:
 %   tau         : Commanded joint torques [3x1] (Nm)
 %
 % USAGE:
-%   tau = get_operational_space_control(q, dq, p_des, v_des, params, G)
-%   tau = get_operational_space_control(q, dq, p_des, v_des, params, a_des, 'inverse_dynamics')
+%   tau = get_joint_space_control(q, dq, q_des, dq_des, params, G)
+%   tau = get_joint_space_control(q, dq, q_des, dq_des, params, ddq_des, 'inverse_dynamics')
 
     %% 0. Parse Input Arguments
     if nargin == 6
         mode = 'simple';
         G = varargin{1};
-        a_des = [];
+        ddq_des = [];
     elseif nargin == 7
         mode = 'inverse_dynamics';
-        a_des = varargin{1};
+        ddq_des = varargin{1};
         if ~strcmp(varargin{2}, 'inverse_dynamics')
             error('For 7 arguments, 7th argument must be ''inverse_dynamics''.');
         end
@@ -36,29 +36,20 @@ function tau = get_operational_space_control(q_curr, dq_curr, p_des, v_des, para
         error('Invalid number of arguments. Use 6 for simple mode or 7 for inverse dynamics mode.');
     end
 
-    %% 1. Compute Jacobian
-    J_full = get_Jacobian(q_curr(1), q_curr(2), q_curr(3), params.a2, params.a3);
-    J = J_full(1:3, :);
-
-    %% 2. Calculate Current Cartesian State
-    p_curr = get_forward_kinematics(q_curr, params.a2, params.a3);
-    v_curr = J * dq_curr;
-
-    %% 3. Extract Control Gains
+    %% 1. Extract Control Gains
     Kp = params.kp * eye(3);
     Kd = params.kd * eye(3);
 
-    %% 4. Calculate Tracking Error
-    e  = p_des - p_curr;
-    de = v_des - v_curr;
+    %% 2. Calculate Tracking Error
+    e  = q_des - q_curr;
+    de = dq_des - dq_curr;
 
-    %% 5. Compute Control Torques
+    %% 3. Compute Control Torques
     if strcmp(mode, 'simple')
-        F_des = Kp*e + Kd*de;
-        tau = J' * F_des + G;
+        tau = Kp*e + Kd*de + G;
 
     elseif strcmp(mode, 'inverse_dynamics')
-        % 5a. Get dynamics matrices
+        % 3a. Get dynamics matrices
         B = get_B_matrix(q_curr(1), q_curr(2), q_curr(3), ...
             params.m1, params.m2, params.m3, params.a2, params.a3, ...
             params.I1(1,1), params.I1(2,2), params.I1(3,3), ...
@@ -75,22 +66,15 @@ function tau = get_operational_space_control(q_curr, dq_curr, p_des, v_des, para
         G = get_G_vector(q_curr(1), q_curr(2), q_curr(3), ...
             params.m1, params.m2, params.m3, params.a2, params.a3, params.g);
 
-        % 5b. Get Jacobian time derivative
-        J_dot = get_J_dot(q_curr(1), q_curr(2), q_curr(3), ...
-            dq_curr(1), dq_curr(2), dq_curr(3), params.a2, params.a3);
+        % 3b. Calculate desired acceleration with feedback
+        y = ddq_des + Kd*de + Kp*e;
 
-        % 5c. Calculate desired acceleration with feedback
-        y = a_des + Kd*de + Kp*e;
-
-        % 5d. Map Cartesian acceleration to joint acceleration
-        ddq_cmd = J \ (y - J_dot * dq_curr);
-
-        % 5e. Friction compensation
+        % 3c. Friction compensation
         damping_coeff = 0.5;
         F_friction = damping_coeff * dq_curr;
 
-        % 5f. Assemble final torque
-        tau = B * ddq_cmd + C * dq_curr + G + F_friction;
+        % 3d. Assemble final torque
+        tau = B * y + C * dq_curr + G + F_friction;
 
     else
         error('Invalid mode. Use ''simple'' or ''inverse_dynamics''.');

@@ -1,39 +1,46 @@
 function [p_des, v_des, a_des] = get_cartesian_traj(t, t_start, duration, p_start, p_end)
 % GET_CARTESIAN_TRAJ
-% Generates a straight-line trajectory for the End-Effector
-% Now includes ACCELERATION output.
+%
+% Generates a straight-line trajectory for the end-effector in Cartesian space
+%
+% INPUTS:
+%   t           : Current time (s)
+%   t_start     : Trajectory start time (s)
+%   duration    : Trajectory duration (s)
+%   p_start     : Initial end-effector position [3x1] (m)
+%   p_end       : Target end-effector position [3x1] (m)
+%
+% OUTPUTS:
+%   p_des       : Desired position [3x1] (m)
+%   v_des       : Desired velocity [3x1] (m/s)
+%   a_des       : Desired acceleration [3x1] (m/s^2)
 
+    %% 0. Handle Time Limits
     if t <= t_start
         p_des = p_start;
-        v_des = [0;0;0];
-        a_des = [0;0;0]; % Zero acceleration before start
+        v_des = zeros(3,1);
+        a_des = zeros(3,1);
         return;
     elseif t >= (t_start + duration)
         p_des = p_end;
-        v_des = [0;0;0];
-        a_des = [0;0;0]; % Zero acceleration after end
+        v_des = zeros(3,1);
+        a_des = zeros(3,1);
         return;
     end
 
-    % Normalized time (0 to 1)
+    %% 1. Normalize Time
     tau = (t - t_start) / duration;
-    
-    % Cubic Polynomial Scaling
-    s = 3*tau^2 - 2*tau^3;       
-    
-    % First Derivative (velocity scale)
-    ds = (6*tau - 6*tau^2) / duration; 
-    
-    % Second Derivative (acceleration scale)
-    % Chain rule: d/dt(ds/dtau * 1/dur) = d2s/dtau2 * (1/dur)^2
-    dds = (6 - 12*tau) / duration^2; 
-    
-    % Interpolate Vector
+
+    %% 2. Calculate Polynomial Basis Functions
+    s      = 3*tau^2 - 2*tau^3;
+    s_dot  = 6*tau   - 6*tau^2;
+    s_ddot = 6       - 12*tau;
+
+    %% 3. Scale to Trajectory
     delta_p = p_end - p_start;
-    
-    % Outputs
+
     p_des = p_start + delta_p * s;
-    v_des = delta_p * ds;
-    a_des = delta_p * dds; % New acceleration output
-    
+    v_des = delta_p * s_dot / duration;
+    a_des = delta_p * s_ddot / duration^2;
+
 end
