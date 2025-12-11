@@ -65,7 +65,7 @@ params.kd = 2*zeta*omega_n;
 % 1. Choose Control Space
 % 'JOINT'       = Control joint angles (q1, q2, q3)
 % 'OPERATIONAL' = Control end-effector position (x, y, z)
-params.CONTROL_SPACE = 'OPERATIONAL';
+params.CONTROL_SPACE = 'JOINT';
 
 % 2. Choose Reference Type
 % true  = Follow a smooth path (Trajectory Planning)
@@ -75,7 +75,7 @@ params.USE_TRAJECTORY = true;
 % 3. Choose Dynamics Compensation
 % true  = Full Inverse Dynamics (Cancel B, C, G) -> "Computed Torque"
 % false = Gravity Compensation Only (Cancel G)   -> "PD Control"
-params.USE_INVERSE_DYNAMICS = false;
+params.USE_INVERSE_DYNAMICS = true;
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');

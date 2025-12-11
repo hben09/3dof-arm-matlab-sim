@@ -91,15 +91,16 @@ function xdot = f_arm_dynamics(t, x, params)
     
     if strcmp(params.CONTROL_SPACE, 'JOINT')
         % --- JOINT SPACE CONTROL ---
-        
+
         if params.USE_INVERSE_DYNAMICS
             % Method: Computed Torque Control (Inverse Dynamics)
             % tau = B(q)*y + C*dq + G
-            tau = get_control_torque(q_curr, dq_curr, ref_pos, ref_vel, ref_acc, ...
-                                     B, C, G, params);
+            tau = get_joint_space_control(q_curr, dq_curr, ref_pos, ref_vel, ...
+                                          params, ref_acc, 'inverse_dynamics');
         else
             % Method: PD Control + Gravity Compensation
-            tau = get_joint_space_pd_control(q_curr, dq_curr, ref_pos, ref_vel, G, params);
+            tau = get_joint_space_control(q_curr, dq_curr, ref_pos, ref_vel, ...
+                                          params, G);
         end
 
     elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
