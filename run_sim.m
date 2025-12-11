@@ -75,7 +75,7 @@ params.USE_TRAJECTORY = true;
 % 3. Choose Dynamics Compensation
 % true  = Full Inverse Dynamics (Cancel B, C, G) -> "Computed Torque"
 % false = Gravity Compensation Only (Cancel G)   -> "PD Control"
-params.USE_INVERSE_DYNAMICS = false;
+params.USE_INVERSE_DYNAMICS = true;
 
 %% 3. Run Simulation (ODE Solver)
 disp('Running Simulation with ode15s...');
