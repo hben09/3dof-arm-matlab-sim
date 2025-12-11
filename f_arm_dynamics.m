@@ -104,17 +104,16 @@ function xdot = f_arm_dynamics(t, x, params)
 
     elseif strcmp(params.CONTROL_SPACE, 'OPERATIONAL')
         % --- OPERATIONAL SPACE CONTROL ---
-        
+
         if params.USE_INVERSE_DYNAMICS
             % Method: Operational Space Inverse Dynamics
             % Decouples task space into linear double integrators
-            tau = get_op_space_inverse_dynamics(q_curr, dq_curr, ...
-                                                ref_pos, ref_vel, ref_acc, ...
-                                                params);
+            tau = get_operational_space_control(q_curr, dq_curr, ...
+                                                ref_pos, ref_vel, ...
+                                                params, ref_acc, 'inverse_dynamics');
         else
             % Method: Operational Space PD + Gravity Compensation
             % Acts like a Cartesian spring
-            % Note: This function needs to be updated to accept ref_vel if you want damping tracking
             tau = get_operational_space_control(q_curr, dq_curr, ...
                                                 ref_pos, ref_vel, ...
                                                 params, G);
