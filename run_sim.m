@@ -6,6 +6,9 @@
 clear; clc; close all;
 
 addpath('visualization');
+addpath('controllers');
+addpath('trajectory');
+addpath('kinematics');
 
 %% 0. Define Robot Parameters
 params.m1 = 1.0;  % Waist mass (kg)
