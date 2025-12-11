@@ -52,10 +52,11 @@ target_pos = {[0.5; 0.5; 0.5], [0.0; -0.6; 0.4], [-0.5; 0.5; 0.2]};
 ## Project Structure
 
 - `run_sim.m` - Main simulation script
+- `derive_arm_equations.m` - Symbolic derivation of dynamics equations
 - `f_arm_dynamics.m` - System dynamics (ODE function)
-- `get_*_control.m` - Control laws
-- `get_*_kinematics.m` - Forward/inverse kinematics
-- `get_*_traj.m` - Trajectory generation
+- `controllers/` - Control laws (joint space, operational space)
+- `trajectory/` - Trajectory generation (cubic, cartesian)
+- `kinematics/` - Forward/inverse kinematics
 - `generated_functions/` - Auto-generated dynamics matrices (B, C, G, J)
 - `visualization/` - Animation and plotting
 
