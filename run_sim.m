@@ -132,11 +132,7 @@ t_anim = t_start : 1/fps : t_end;
 % This prevents jitter from variable time steps
 x_anim = interp1(t, x, t_anim); 
 
-%% 5. Pre-calculate End Effector Path for Trace
-addpath('visualization');
-end_effector_path = get_end_effector_path(t_anim, x_anim, params);
-
-%% 5b. Calculate "Ghost Goal" Path (Commanded Position)
+%% 5. Calculate "Ghost Goal" Path (Commanded Position)
 % This determines where the controller WANTS the robot to be at every frame.
 % It handles both Trajectory ON/OFF and Joint/Operational spaces.
 
@@ -209,7 +205,7 @@ title('Joint Angles vs Time');
 grid on;
 
 %% 6. 3D Animation
-animate_robot(t_anim, x_anim, end_effector_path, target_pos, params, t_end, fps, ghost_path);
+visualize_robot(t_anim, x_anim, target_pos, params, t_end, fps, ghost_path);
 
 
 %% 8. Plot Tracking Error (New Section)
