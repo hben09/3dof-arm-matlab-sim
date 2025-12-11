@@ -5,6 +5,8 @@
 
 clear; clc; close all;
 
+addpath('visualization');
+
 %% 0. Define Robot Parameters
 params.m1 = 1.0;  % Waist mass (kg)
 params.m2 = 5.0;  % Upper arm mass (kg)
@@ -47,7 +49,7 @@ params.kp = omega_n^2;
 params.kd = 2*zeta*omega_n;
 
 % 'JOINT' = control joint angles | 'OPERATIONAL' = control end-effector position
-params.CONTROL_SPACE = 'JOINT';
+params.CONTROL_SPACE = 'OPERATIONAL';
 
 % true = smooth trajectory | false = step input
 params.USE_TRAJECTORY = true;
