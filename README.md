@@ -1,4 +1,4 @@
-# 3-Link Robotic Arm Dynamics
+# 3 DOF Robotic Arm MATLAB Simulation
 
 This repository contains a MATLAB simulation of a 3-DOF robotic arm based off the "anthropomorphic arm" found in Siciliano's *Robotics: Modelling, Planning and Control*. It was developed for my ME500 final project and uses the kinematic and dynamic derivations from the textbook for forward/inverse kinematics, Jacobian computation, and trajectory planning.
 
